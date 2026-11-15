@@ -120,7 +120,13 @@ func _draw() -> void:
 	var player_stats: Dictionary = CHARACTERS[selected_character]
 	var player_tint := Color("#ffffff") if player_hit_flash > 0.0 else Color(player_stats["color"])
 	var enemy_tint := Color("#ffffff") if enemy_hit_flash > 0.0 else Color("#ff687d")
-	_draw_fighter(player_x, FLOOR_Y, player_tint, 1, str(player_stats["weapon"]), move_direction != 0, attack_animation_time > 0.0 or skill_animation_time > 0.0)
+	if dash_time > 0.0:
+		var trail_color := Color(player_stats["color"])
+		trail_color.a = clampf(dash_time / 0.18, 0.0, 0.75)
+		for trail_index in range(1, 5):
+			var trail_offset := float(trail_index) * 17.0 * float(player_facing)
+			draw_line(Vector2(player_x - trail_offset, FLOOR_Y - 75.0), Vector2(player_x - trail_offset - 24.0 * float(player_facing), FLOOR_Y - 75.0), trail_color, 5.0 - float(trail_index) * 0.7, true)
+	_draw_fighter(player_x, FLOOR_Y, player_tint, player_facing, str(player_stats["weapon"]), move_direction != 0 or dash_time > 0.0, attack_animation_time > 0.0 or skill_animation_time > 0.0)
 	_draw_fighter(enemy_x, FLOOR_Y, enemy_tint, -1, "AXE", absf(enemy_x - player_x) > 125.0, enemy_attack_animation_time > 0.0)
 	if impact_effect_time > 0.0:
 		var impact_y := FLOOR_Y - 78.0
