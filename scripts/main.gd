@@ -394,45 +394,101 @@ func _draw() -> void:
 
 
 func _draw_menu_backdrop() -> void:
-	# Latar pemilihan petarung bergaya anime: malam, bulan, kuil, dan kelopak sakura.
-	draw_rect(Rect2(0, 0, 1280, 720), Color("#080f25"))
-	draw_rect(Rect2(0, 0, 1280, 430), Color("#111d3d"))
-	draw_circle(Vector2(1010, 155), 118.0, Color(0.30, 0.55, 1.0, 0.10))
-	draw_circle(Vector2(1010, 155), 82.0, Color("#c7d9ff"))
-	draw_circle(Vector2(1010, 155), 70.0, Color("#e7edff"))
-	# Siluet pegunungan.
+	# Cinematic anime-battle title screen: layered night sky, moon, arena and hero silhouettes.
+	draw_rect(Rect2(0, 0, 1280, 720), Color("#070b1c"))
+	draw_rect(Rect2(0, 0, 1280, 520), Color("#101b39"))
+	draw_rect(Rect2(0, 0, 1280, 300), Color("#172953"))
+	# Radial moon glow and moon disc.
+	for glow in range(7, 0, -1):
+		var radius := 105.0 + float(glow) * 22.0
+		var halo := Color("#4b8dff")
+		halo.a = 0.025 + float(7 - glow) * 0.006
+		draw_circle(Vector2(1000, 190), radius, halo)
+	draw_circle(Vector2(1000, 190), 91.0, Color("#b9d8ff"))
+	draw_circle(Vector2(1000, 190), 78.0, Color("#edf4ff"))
+	draw_circle(Vector2(1030, 165), 13.0, Color("#c8d9f5"))
+	draw_circle(Vector2(970, 218), 9.0, Color("#d2e2fa"))
+	# Anime-style energy rays behind the fighters.
+	for ray in range(17):
+		var angle := -2.65 + float(ray) * 0.165
+		var ray_start := Vector2(825, 330)
+		var ray_end := ray_start + Vector2(cos(angle), sin(angle)) * 560.0
+		var ray_color := Color("#3d72c8")
+		ray_color.a = 0.10 if ray % 2 == 0 else 0.045
+		draw_line(ray_start, ray_end, ray_color, 2.0, true)
+	# Distant mountain silhouettes.
 	draw_colored_polygon(PackedVector2Array([
-		Vector2(0, 390), Vector2(145, 250), Vector2(275, 365),
-		Vector2(430, 225), Vector2(590, 380), Vector2(760, 265),
-		Vector2(930, 390), Vector2(1080, 250), Vector2(1280, 370),
-		Vector2(1280, 590), Vector2(0, 590)
-	]), Color("#17284b"))
-	# Pagoda di sisi kanan.
+		Vector2(0, 430), Vector2(150, 300), Vector2(270, 405), Vector2(440, 270),
+		Vector2(600, 410), Vector2(760, 295), Vector2(920, 410), Vector2(1080, 285),
+		Vector2(1280, 420), Vector2(1280, 610), Vector2(0, 610)
+	]), Color("#17294b"))
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(0, 500), Vector2(190, 390), Vector2(360, 490), Vector2(560, 370),
+		Vector2(760, 500), Vector2(980, 385), Vector2(1160, 490), Vector2(1280, 420),
+		Vector2(1280, 620), Vector2(0, 620)
+	]), Color("#0d1933"))
+	# Pagoda silhouette on the far right.
 	for floor_index in range(3):
-		var y := 340.0 + float(floor_index) * 62.0
-		var half_width := 105.0 - float(floor_index) * 19.0
-		draw_rect(Rect2(1110.0 - half_width * 0.55, y, half_width * 1.1, 58.0), Color("#101a32"))
+		var py := 370.0 + float(floor_index) * 55.0
+		var half_width := 82.0 - float(floor_index) * 17.0
+		draw_rect(Rect2(1135.0 - half_width * 0.55, py, half_width * 1.1, 52.0), Color("#0a142b"))
 		draw_colored_polygon(PackedVector2Array([
-			Vector2(1110.0 - half_width - 24.0, y + 5.0),
-			Vector2(1110.0, y - 27.0),
-			Vector2(1110.0 + half_width + 24.0, y + 5.0),
-			Vector2(1110.0 + half_width, y + 13.0),
-			Vector2(1110.0 - half_width, y + 13.0)
-		]), Color("#26395f"))
-	# Kelopak sakura sebagai aksen.
-	for petal_index in range(34):
-		var px := float((petal_index * 173 + 71) % 1280)
-		var py := float((petal_index * 97 + 43) % 510)
-		var petal_color := Color("#ff8fc3") if petal_index % 2 == 0 else Color("#c5a4ff")
-		petal_color.a = 0.24
-		draw_circle(Vector2(px, py), 2.0 + float(petal_index % 3), petal_color)
-	# Lantai dan garis cahaya.
-	draw_rect(Rect2(0, 590, 1280, 130), Color("#090f20"))
-	draw_line(Vector2(0, 590), Vector2(1280, 590), Color("#4b78c8"), 2.0)
-	for line_index in range(13):
-		var x := float(line_index) * 110.0
-		draw_line(Vector2(640, 590), Vector2(x, 720), Color(0.24, 0.43, 0.75, 0.18), 1.0)
-	draw_rect(Rect2(0, 0, 1280, 720), Color(0.02, 0.04, 0.10, 0.22))
+			Vector2(1135.0 - half_width - 24.0, py + 5.0), Vector2(1135.0, py - 25.0),
+			Vector2(1135.0 + half_width + 24.0, py + 5.0), Vector2(1135.0 + half_width, py + 13.0),
+			Vector2(1135.0 - half_width, py + 13.0)
+		]), Color("#263d68"))
+	# Hero A: blue sword fighter, posed on the right side of the title screen.
+	var blue := Color("#62caff")
+	var white := Color("#e8f6ff")
+	var hero := Vector2(820, 535)
+	draw_circle(hero + Vector2(0, -100), 78.0, Color(0.12, 0.55, 1.0, 0.10))
+	draw_circle(hero + Vector2(0, -100), 55.0, Color(0.12, 0.55, 1.0, 0.08))
+	draw_line(hero + Vector2(0, -78), hero + Vector2(-4, -5), blue, 11.0, true)
+	draw_circle(hero + Vector2(0, -112), 22.0, Color("#101a32"))
+	draw_arc(hero + Vector2(0, -112), 23.0, 3.35, 6.0, 18, white, 4.0)
+	draw_line(hero + Vector2(-2, -65), hero + Vector2(-39, -32), blue, 8.0, true)
+	draw_line(hero + Vector2(-39, -32), hero + Vector2(-56, -4), blue, 7.0, true)
+	draw_line(hero + Vector2(2, -65), hero + Vector2(42, -95), blue, 8.0, true)
+	draw_line(hero + Vector2(42, -95), hero + Vector2(65, -124), white, 6.0, true)
+	draw_line(hero + Vector2(65, -124), hero + Vector2(124, -203), Color("#d9efff"), 5.0, true)
+	draw_line(hero + Vector2(58, -116), hero + Vector2(133, -218), Color("#63caff"), 2.0, true)
+	draw_line(hero + Vector2(-4, -5), hero + Vector2(-38, 45), blue, 9.0, true)
+	draw_line(hero + Vector2(-38, 45), hero + Vector2(-52, 68), blue, 8.0, true)
+	draw_line(hero + Vector2(-4, -5), hero + Vector2(34, 39), blue, 9.0, true)
+	draw_line(hero + Vector2(34, 39), hero + Vector2(62, 60), blue, 8.0, true)
+	# Hero B: red rival silhouette, slightly behind the blue fighter.
+	var red := Color("#ff668c")
+	var rival := Vector2(1080, 555)
+	draw_circle(rival + Vector2(0, -105), 65.0, Color(1.0, 0.12, 0.30, 0.08))
+	draw_line(rival + Vector2(0, -80), rival + Vector2(-4, -8), red, 10.0, true)
+	draw_circle(rival + Vector2(0, -112), 20.0, Color("#1b142c"))
+	draw_arc(rival + Vector2(0, -112), 22.0, 3.2, 6.1, 18, Color("#ffd0dc"), 4.0)
+	draw_line(rival + Vector2(-2, -65), rival + Vector2(-38, -92), red, 8.0, true)
+	draw_line(rival + Vector2(-38, -92), rival + Vector2(-58, -123), red, 7.0, true)
+	draw_line(rival + Vector2(2, -65), rival + Vector2(39, -32), red, 8.0, true)
+	draw_line(rival + Vector2(39, -32), rival + Vector2(58, -5), red, 7.0, true)
+	draw_line(rival + Vector2(-4, -8), rival + Vector2(-35, 43), red, 9.0, true)
+	draw_line(rival + Vector2(-35, 43), rival + Vector2(-50, 66), red, 8.0, true)
+	draw_line(rival + Vector2(-4, -8), rival + Vector2(36, 38), red, 9.0, true)
+	draw_line(rival + Vector2(36, 38), rival + Vector2(63, 58), red, 8.0, true)
+	# Floating sparks and sakura-like particles.
+	for particle in range(48):
+		var px := float((particle * 173 + 71) % 1280)
+		var py := float((particle * 97 + 43) % 540)
+		var particle_color := Color("#ff8fc3") if particle % 3 == 0 else (Color("#74cfff") if particle % 3 == 1 else Color("#c5a4ff"))
+		particle_color.a = 0.18 + float(particle % 4) * 0.035
+		draw_circle(Vector2(px, py), 1.5 + float(particle % 3), particle_color)
+	# Foreground arena floor, glowing edge and perspective lanes.
+	draw_rect(Rect2(0, 610, 1280, 110), Color("#080d1b"))
+	draw_rect(Rect2(0, 610, 1280, 3), Color("#3f78c7"))
+	draw_line(Vector2(0, 613), Vector2(1280, 613), Color("#8edcff"), 1.0)
+	for lane in range(15):
+		var x := float(lane) * 100.0
+		draw_line(Vector2(640, 613), Vector2(x, 720), Color(0.25, 0.53, 0.95, 0.16), 1.2, true)
+	# Diagonal energy slash frames the right side.
+	draw_line(Vector2(730, 510), Vector2(1190, 120), Color(0.30, 0.70, 1.0, 0.12), 15.0, true)
+	draw_line(Vector2(760, 510), Vector2(1210, 130), Color("#72d8ff"), 2.0, true)
+	draw_rect(Rect2(0, 0, 1280, 720), Color(0.015, 0.025, 0.07, 0.18))
 
 
 func _draw_arena_background() -> void:
