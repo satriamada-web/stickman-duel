@@ -144,8 +144,8 @@ func _draw() -> void:
 			var trail_offset := float(trail_index) * 17.0 * float(player_facing)
 			draw_line(Vector2(player_x - trail_offset, FLOOR_Y - 75.0), Vector2(player_x - trail_offset - 24.0 * float(player_facing), FLOOR_Y - 75.0), trail_color, 5.0 - float(trail_index) * 0.7, true)
 	draw_circle(Vector2(player_x, FLOOR_Y - 3.0), 23.0 - minf(jump_height * 0.035, 12.0), Color(0.02, 0.04, 0.08, 0.28))
-	_draw_fighter(player_x, FLOOR_Y - jump_height, player_tint, player_facing, str(player_stats["weapon"]), move_direction != 0 or dash_time > 0.0, maxf(attack_animation_time, skill_animation_time), 0.42 if skill_animation_time > attack_animation_time else attack_animation_duration, dash_time > 0.0, jump_height > 0.0)
-	_draw_fighter(enemy_x, FLOOR_Y, enemy_tint, -1, "AXE", absf(enemy_x - player_x) > 125.0, enemy_attack_animation_time, 0.24, false, false)
+	_draw_fighter(player_x, FLOOR_Y - jump_height, player_tint, player_facing, str(player_stats["weapon"]), move_direction != 0 or dash_time > 0.0, maxf(attack_animation_time, skill_animation_time), 0.42 if skill_animation_time > attack_animation_time else attack_animation_duration, dash_time > 0.0, jump_height > 0.0, combo_step)
+	_draw_fighter(enemy_x, FLOOR_Y, enemy_tint, -1, "AXE", absf(enemy_x - player_x) > 125.0, enemy_attack_animation_time, 0.24, false, false, 1)
 	if impact_effect_time > 0.0:
 		var impact_y := FLOOR_Y - 78.0
 		var impact_progress := 1.0 - impact_effect_time / 0.24
@@ -159,7 +159,7 @@ func _draw() -> void:
 			var ray_end := Vector2(cos(angle), sin(angle)) * (burst_radius + 12.0)
 			draw_line(Vector2(impact_effect_x, impact_y) + ray_start, Vector2(impact_effect_x, impact_y) + ray_end, burst_color, 3.0)
 
-func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon: String, walking: bool, attack_time: float, attack_duration: float, dashing: bool, airborne: bool) -> void:
+func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon: String, walking: bool, attack_time: float, attack_duration: float, dashing: bool, airborne: bool, combo_style: int) -> void:
 	# Animasi prosedural dengan fase ancang-ancang, ayunan, dan pemulihan.
 	var phase := animation_time * (13.0 if walking else 2.2)
 	var stride := sin(phase) if walking else 0.0
@@ -198,6 +198,22 @@ func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon
 		front_hand = shoulder + Vector2((37.0 - 22.0 * windup + reach) * direction, -13.0 - 12.0 * strike)
 		back_elbow = shoulder + Vector2(-22.0 * direction, 19.0)
 		back_hand = back_elbow + Vector2(-14.0 * direction, 9.0)
+
+		# Tiap senjata memiliki bentuk ayunan yang berbeda.
+		if weapon == "SPEAR":
+			front_elbow = shoulder + Vector2(34.0 * direction, -2.0)
+			front_hand = shoulder + Vector2((72.0 if combo_style != 3 else 92.0) * direction, -4.0)
+		elif weapon == "AXE":
+			var axe_swing := 1.0 if combo_style == 3 else 0.65
+			front_elbow = shoulder + Vector2(17.0 * direction, -24.0 * axe_swing)
+			front_hand = shoulder + Vector2(40.0 * direction, -34.0 * axe_swing + 8.0)
+		elif combo_style == 2:
+			front_elbow = shoulder + Vector2(30.0 * direction, 12.0)
+			front_hand = shoulder + Vector2(64.0 * direction, 19.0)
+		elif combo_style == 3:
+			front_elbow = shoulder + Vector2(30.0 * direction, -24.0)
+			front_hand = shoulder + Vector2(76.0 * direction, -34.0)
+
 		front_knee += Vector2(-5.0 * direction * windup, 0.0)
 		front_foot += Vector2(-7.0 * direction * windup, 0.0)
 
