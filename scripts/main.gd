@@ -41,6 +41,8 @@ var player_stun_time := 0.0
 var enemy_stun_time := 0.0
 var player_knockdown_time := 0.0
 var enemy_knockdown_time := 0.0
+var player_ragdoll_blend := 0.0
+var enemy_ragdoll_blend := 0.0
 var impact_effect_time := 0.0
 var impact_effect_x := 0.0
 var impact_effect_color := Color("#ffe08a")
@@ -169,6 +171,8 @@ func _process(delta: float) -> void:
 	enemy_stun_time = maxf(0.0, enemy_stun_time - delta)
 	player_knockdown_time = maxf(0.0, player_knockdown_time - delta)
 	enemy_knockdown_time = maxf(0.0, enemy_knockdown_time - delta)
+	player_ragdoll_blend = move_toward(player_ragdoll_blend, 0.0, delta * 2.8)
+	enemy_ragdoll_blend = move_toward(enemy_ragdoll_blend, 0.0, delta * 2.8)
 	impact_effect_time = maxf(0.0, impact_effect_time - delta)
 	block_broken_time = maxf(0.0, block_broken_time - delta)
 	perfect_parry_flash = maxf(0.0, perfect_parry_flash - delta)
@@ -298,6 +302,7 @@ func _resolve_enemy_attack() -> void:
 	if is_blocking and stamina <= 0.0:
 		incoming_damage = base_damage
 	player_hp = maxi(0, player_hp - incoming_damage)
+	player_ragdoll_blend = 1.0
 	if not is_blocking:
 		player_x = clampf(player_x + (1.0 if player_x > enemy_x else -1.0) * (145.0 if enemy_attack_heavy else 95.0), 70.0, 1210.0)
 		player_stun_time = 1.15 if enemy_attack_heavy else 0.20
@@ -332,8 +337,8 @@ func _draw() -> void:
 			var trail_offset := float(trail_index) * 17.0 * float(player_facing)
 			draw_line(Vector2(player_x - trail_offset, FLOOR_Y - 75.0), Vector2(player_x - trail_offset - 24.0 * float(player_facing), FLOOR_Y - 75.0), trail_color, 5.0 - float(trail_index) * 0.7, true)
 	draw_circle(Vector2(player_x, FLOOR_Y - 3.0), 23.0 - minf(jump_height * 0.035, 12.0), Color(0.02, 0.04, 0.08, 0.28))
-	_draw_fighter(player_x, FLOOR_Y - jump_height, player_tint, player_facing, str(player_stats["weapon"]), move_direction != 0 or dash_time > 0.0, maxf(attack_animation_time, skill_animation_time), 0.42 if skill_animation_time > attack_animation_time else attack_animation_duration, dash_time > 0.0, jump_height > 0.0, combo_step, player_hit_flash, selected_character, landing_time, jump_velocity, jump_takeoff_time, is_blocking, player_knockdown_time, enemy_x)
-	_draw_fighter(enemy_x, FLOOR_Y, enemy_tint, enemy_facing, "AXE", absf(enemy_x - player_x) > 125.0, enemy_attack_animation_time, 0.24, false, false, 1, enemy_hit_flash, "Axeman", 0.0, 0.0, 0.0, false, enemy_knockdown_time, player_x)
+	_draw_fighter(player_x, FLOOR_Y - jump_height, player_tint, player_facing, str(player_stats["weapon"]), move_direction != 0 or dash_time > 0.0, maxf(attack_animation_time, skill_animation_time), 0.42 if skill_animation_time > attack_animation_time else attack_animation_duration, dash_time > 0.0, jump_height > 0.0, combo_step, player_hit_flash, selected_character, landing_time, jump_velocity, jump_takeoff_time, is_blocking, player_knockdown_time, enemy_x, player_ragdoll_blend)
+	_draw_fighter(enemy_x, FLOOR_Y, enemy_tint, enemy_facing, "AXE", absf(enemy_x - player_x) > 125.0, enemy_attack_animation_time, 0.24, false, false, 1, enemy_hit_flash, "Axeman", 0.0, 0.0, 0.0, false, enemy_knockdown_time, player_x, enemy_ragdoll_blend)
 	if enemy_attack_windup > 0.0:
 		var tell_progress := 1.0 - clampf(enemy_attack_windup / (0.48 if enemy_attack_heavy else 0.28), 0.0, 1.0)
 		var tell_color := Color("#ffb45c") if enemy_attack_heavy else Color("#ff687d")
@@ -432,7 +437,7 @@ func _solve_knee_2d(hip_point: Vector2, foot_point: Vector2, upper_length: float
 	return hip_point + direction_to_foot * along + perpendicular * height * bend_direction
 
 
-func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon: String, walking: bool, attack_time: float, attack_duration: float, dashing: bool, airborne: bool, combo_style: int, hit_time: float, fighter_name: String, landing: float = 0.0, vertical_velocity: float = 0.0, takeoff: float = 0.0, blocking: bool = false, knockdown: float = 0.0, target_x: float = 0.0) -> void:
+func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon: String, walking: bool, attack_time: float, attack_duration: float, dashing: bool, airborne: bool, combo_style: int, hit_time: float, fighter_name: String, landing: float = 0.0, vertical_velocity: float = 0.0, takeoff: float = 0.0, blocking: bool = false, knockdown: float = 0.0, target_x: float = 0.0, ragdoll_blend: float = 0.0) -> void:
 	# Rig prosedural: ritme langkah, pusat berat, dan pose serangan dibangun dari waktu.
 	var gait_rate := 18.0 if dashing else (11.5 if walking else 2.2)
 	var phase := animation_time * gait_rate
@@ -612,6 +617,22 @@ func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon
 		back_knee = back_knee.lerp(prone_back_knee, getup_blend)
 		back_foot = back_foot.lerp(prone_back_foot, getup_blend)
 
+	# Active-ragdoll ringan: momentum benturan menggeser rig lalu mereda.
+	if ragdoll_blend > 0.0 and knockdown <= 0.0:
+		var recoil := ragdoll_blend
+		var wobble := sin(animation_time * 24.0) * recoil
+		var recoil_x := -float(direction) * (13.0 * recoil + 3.0 * wobble)
+		center.x += recoil_x * 0.45
+		head += Vector2(recoil_x * 0.65, 5.0 * recoil)
+		shoulder += Vector2(recoil_x, 7.0 * recoil)
+		hip += Vector2(recoil_x * 0.28, 3.0 * recoil)
+		front_elbow += Vector2(-float(direction) * 10.0 * recoil, -12.0 * recoil)
+		front_hand += Vector2(-float(direction) * 17.0 * recoil, -18.0 * recoil + wobble * 5.0)
+		back_elbow += Vector2(-float(direction) * 7.0 * recoil, -8.0 * recoil)
+		back_hand += Vector2(-float(direction) * 13.0 * recoil, -13.0 * recoil - wobble * 4.0)
+		front_knee += Vector2(-float(direction) * 5.0 * recoil, -4.0 * recoil)
+		back_knee += Vector2(float(direction) * 4.0 * recoil, -2.0 * recoil)
+
 	draw_line(hip, back_knee, tint, 7.0, true)
 	draw_line(back_knee, back_foot, tint, 7.0, true)
 	draw_line(shoulder, back_elbow, tint, 6.0, true)
@@ -788,7 +809,7 @@ func _style_game_button(button: Button, base_color: Color, font_size: int) -> vo
 
 func _set_blocking(value: bool) -> void:
 	var was_blocking := is_blocking
-	is_blocking = value and game_started and not match_over and player_stun_time <= 0.0 and stamina > 0.0 and block_broken_time <= 0.0
+	is_blocking = value and game_started and not match_over and player_stun_time <= 0.0 and player_knockdown_time <= 0.0 and stamina > 0.0 and block_broken_time <= 0.0
 	if is_blocking and not was_blocking:
 		block_hold_time = 0.0
 		_play_sfx("block")
@@ -831,6 +852,8 @@ func _start_match() -> void:
 	enemy_stun_time = 0.0
 	player_knockdown_time = 0.0
 	enemy_knockdown_time = 0.0
+	player_ragdoll_blend = 0.0
+	enemy_ragdoll_blend = 0.0
 	enemy_attack_cooldown = 0.0
 	enemy_attack_windup = 0.0
 	enemy_attack_heavy = false
@@ -885,7 +908,7 @@ func _add_button(parent: Control, value: String, pos: Vector2, button_size: Vect
 	_style_game_button(button, Color("#344e70"), 18)
 	return button
 func _attack() -> void:
-	if not game_started or match_over or attack_cooldown > 0.0 or player_stun_time > 0.0 or is_blocking:
+	if not game_started or match_over or attack_cooldown > 0.0 or player_stun_time > 0.0 or player_knockdown_time > 0.0 or is_blocking:
 		return
 	player_facing = 1 if enemy_x >= player_x else -1
 
@@ -933,6 +956,7 @@ func _attack() -> void:
 		enemy_attack_windup = 0.0
 		enemy_attack_animation_time = 0.0
 		enemy_hit_flash = 0.18
+		enemy_ragdoll_blend = 1.0
 		_shake_screen(10.0 if combo_step == 3 else 6.0)
 		_trigger_hit_stop(0.065 if combo_step == 3 else 0.04)
 		_play_sfx("heavy" if combo_step == 3 else "impact")
@@ -949,7 +973,7 @@ func _attack() -> void:
 
 
 func _jump() -> void:
-	if not game_started or match_over or jump_height > 0.0 or player_stun_time > 0.0:
+	if not game_started or match_over or jump_height > 0.0 or player_stun_time > 0.0 or player_knockdown_time > 0.0:
 		return
 	jump_velocity = 620.0
 	jump_takeoff_time = 0.12
@@ -958,7 +982,7 @@ func _jump() -> void:
 	queue_redraw()
 
 func _use_dash() -> void:
-	if not game_started or match_over or dash_cooldown > 0.0 or player_stun_time > 0.0:
+	if not game_started or match_over or dash_cooldown > 0.0 or player_stun_time > 0.0 or player_knockdown_time > 0.0:
 		return
 	if move_direction != 0:
 		player_facing = move_direction
@@ -969,7 +993,7 @@ func _use_dash() -> void:
 	queue_redraw()
 
 func _use_skill() -> void:
-	if not game_started or match_over or skill_cooldown > 0.0 or player_stun_time > 0.0 or is_blocking:
+	if not game_started or match_over or skill_cooldown > 0.0 or player_stun_time > 0.0 or player_knockdown_time > 0.0 or is_blocking:
 		return
 	player_facing = 1 if enemy_x >= player_x else -1
 	var skill_name := ""
@@ -1002,6 +1026,7 @@ func _use_skill() -> void:
 		enemy_attack_animation_time = 0.0
 		enemy_knockback_velocity = (1.0 if enemy_x >= player_x else -1.0) * 520.0
 		enemy_hit_flash = 0.28
+		enemy_ragdoll_blend = 1.0
 		_shake_screen(9.0)
 		_trigger_hit_stop(0.06)
 		_play_sfx("impact")
