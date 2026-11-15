@@ -11,6 +11,7 @@ const CHARACTERS := {
 var selected_character := "Swordman"
 var player_x := 300.0
 var enemy_x := 960.0
+var enemy_knockback_velocity := 0.0
 var player_hp := 100
 var enemy_hp := 100
 var player_max_hp := 100
@@ -107,14 +108,20 @@ func _process(delta: float) -> void:
 	else:
 		player_x = clampf(player_x + move_direction * current_speed * delta, 70.0, 1210.0)
 
-	var distance := absf(enemy_x - player_x)
-	if distance > 125.0:
-		enemy_x = move_toward(enemy_x, player_x, 145.0 * delta)
+	if absf(enemy_knockback_velocity) > 8.0:
+		enemy_x = clampf(enemy_x + enemy_knockback_velocity * delta, 70.0, 1210.0)
+		enemy_knockback_velocity = move_toward(enemy_knockback_velocity, 0.0, 1250.0 * delta)
+	else:
+		enemy_knockback_velocity = 0.0
+		var distance := absf(enemy_x - player_x)
+		if distance > 125.0:
+			enemy_x = move_toward(enemy_x, player_x, 145.0 * delta)
 	elif enemy_attack_cooldown <= 0.0:
 		enemy_attack_animation_time = 0.24
 		enemy_attack_cooldown = 1.35
 		if dash_time <= 0.0 and jump_height < 45.0:
 			player_hp = maxi(0, player_hp - 8)
+			player_x = clampf(player_x - float(player_facing) * 95.0, 70.0, 1210.0)
 			player_hit_flash = 0.22
 			impact_effect_time = 0.24
 			impact_effect_x = player_x
@@ -324,8 +331,9 @@ func _start_match() -> void:
 	player_max_hp = int(stats["hp"])
 	player_hp = player_max_hp
 	enemy_hp = 100
-	player_x = 300.0
+ 	player_x = 300.0
 	enemy_x = 960.0
+	enemy_knockback_velocity = 0.0
 	time_left = MATCH_LENGTH
 	attack_cooldown = 0.0
 	combo_step = 0
@@ -415,6 +423,13 @@ func _attack() -> void:
 
 	if absf(enemy_x - player_x) <= attack_range:
 		enemy_hp = maxi(0, enemy_hp - damage)
+		var knockback_direction := 1.0 if enemy_x >= player_x else -1.0
+		var knockback_strength := 260.0
+		if combo_step == 2:
+			knockback_strength = 360.0
+		elif combo_step == 3:
+			knockback_strength = 620.0
+		enemy_knockback_velocity = knockback_direction * knockback_strength
 		enemy_hit_flash = 0.18
 		impact_effect_time = 0.24
 		impact_effect_x = enemy_x
