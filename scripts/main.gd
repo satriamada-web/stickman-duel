@@ -189,7 +189,11 @@ func _resolve_enemy_attack() -> void:
 	player_hit_flash = 0.28
 	impact_effect_time = 0.24
 	impact_effect_x = player_x
-	status_label.text = ("SERANGAN KUAT DITAHAN! Damage %d." if enemy_attack_heavy else "BLOCK BERHASIL! Damage %d.") % incoming_damage if is_blocking else ("TERKENA SERANGAN KUAT! -%d HP" if enemy_attack_heavy else "KAMU TERKENA SERANGAN! -%d HP") % incoming_damage
+	if is_blocking:
+		status_label.text = ("SERANGAN KUAT DITAHAN! Damage %d." if enemy_attack_heavy else "BLOCK BERHASIL! Damage %d.") % incoming_damage
+	else:
+		status_label.text = ("TERKENA SERANGAN KUAT! -%d HP" if enemy_attack_heavy else "KAMU TERKENA SERANGAN! -%d HP") % incoming_damage
+
 func _draw() -> void:
 	if not game_started:
 		return
@@ -414,7 +418,7 @@ func _build_ui() -> void:
 	result_button.visible = false
 
 func _set_blocking(value: bool) -> void:
-	is_blocking = value and game_started and not match_over and stamina > 0.0 and block_broken_time <= 0.0
+	is_blocking = value and game_started and not match_over and player_stun_time <= 0.0 and stamina > 0.0 and block_broken_time <= 0.0
 	if block_button != null:
 		block_button.text = "BERTAHAN" if is_blocking else ("LELAH!" if block_broken_time > 0.0 else "BLOCK")
 	queue_redraw()
@@ -431,7 +435,7 @@ func _start_match() -> void:
 	player_max_hp = int(stats["hp"])
 	player_hp = player_max_hp
 	enemy_hp = 100
- 	player_x = 300.0
+	player_x = 300.0
 	enemy_x = 960.0
 	enemy_knockback_velocity = 0.0
 	time_left = MATCH_LENGTH
@@ -541,6 +545,8 @@ func _attack() -> void:
 			knockback_strength = 620.0
 		enemy_knockback_velocity = knockback_direction * knockback_strength
 		enemy_stun_time = 0.12 if combo_step == 1 else (0.20 if combo_step == 2 else 0.36)
+		enemy_attack_windup = 0.0
+		enemy_attack_animation_time = 0.0
 		enemy_hit_flash = 0.18
 		impact_effect_time = 0.24
 		impact_effect_x = enemy_x
@@ -593,6 +599,8 @@ func _use_skill() -> void:
 	if absf(enemy_x - player_x) <= skill_range:
 		enemy_hp = maxi(0, enemy_hp - skill_damage)
 		enemy_stun_time = 0.30
+		enemy_attack_windup = 0.0
+		enemy_attack_animation_time = 0.0
 		enemy_knockback_velocity = (1.0 if enemy_x >= player_x else -1.0) * 520.0
 		enemy_hit_flash = 0.28
 		impact_effect_time = 0.24
