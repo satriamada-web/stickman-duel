@@ -361,7 +361,6 @@ func _build_ui() -> void:
 	_make_label(menu_ui, "STICKMAN DUEL", Vector2(430, 90), 48, Color.WHITE)
 	_make_label(menu_ui, "PILIH PETARUNGMU", Vector2(505, 180), 25, Color("#c8d7e8"))
 	selection_label = _make_label(menu_ui, "Dipilih: Swordman", Vector2(520, 490), 22, Color("#55c7ff"))
-
 	_add_button(menu_ui, "SWORDMAN\nSeimbang | 100 HP", Vector2(170, 285), Vector2(280, 145), func(): _select_character("Swordman"))
 	_add_button(menu_ui, "AXEMAN\nDamage tinggi | 110 HP", Vector2(500, 285), Vector2(280, 145), func(): _select_character("Axeman"))
 	_add_button(menu_ui, "SPEARMAN\nJangkauan | 90 HP", Vector2(830, 285), Vector2(280, 145), func(): _select_character("Spearman"))
@@ -371,51 +370,112 @@ func _build_ui() -> void:
 	game_ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	game_ui.visible = false
 	root.add_child(game_ui)
-	_make_label(game_ui, "STICKMAN DUEL | TRAINING ARENA", Vector2(30, 18), 26, Color.WHITE)
-	player_hp_label = _make_label(game_ui, "PLAYER 1 | HP: 100", Vector2(30, 68), 22, Color("#55c7ff"))
-	enemy_hp_label = _make_label(game_ui, "OPPONENT | HP: 100", Vector2(930, 68), 22, Color("#ff687d"))
+	_make_label(game_ui, "STICKMAN DUEL | TRAINING ARENA", Vector2(30, 18), 24, Color.WHITE)
+	player_hp_label = _make_label(game_ui, "PLAYER 1 | HP: 100", Vector2(30, 60), 19, Color("#55c7ff"))
+	enemy_hp_label = _make_label(game_ui, "OPPONENT | HP: 100", Vector2(930, 60), 19, Color("#ff687d"))
 	player_hp_bar = ProgressBar.new()
-	player_hp_bar.position = Vector2(30, 100)
-	player_hp_bar.size = Vector2(330, 22)
+	player_hp_bar.position = Vector2(30, 88)
+	player_hp_bar.size = Vector2(330, 18)
 	player_hp_bar.min_value = 0
 	player_hp_bar.max_value = 100
 	player_hp_bar.show_percentage = false
 	game_ui.add_child(player_hp_bar)
 	enemy_hp_bar = ProgressBar.new()
-	enemy_hp_bar.position = Vector2(920, 100)
-	enemy_hp_bar.size = Vector2(330, 22)
+	enemy_hp_bar.position = Vector2(920, 88)
+	enemy_hp_bar.size = Vector2(330, 18)
 	enemy_hp_bar.min_value = 0
 	enemy_hp_bar.max_value = 100
 	enemy_hp_bar.show_percentage = false
 	game_ui.add_child(enemy_hp_bar)
-	timer_label = _make_label(game_ui, "90", Vector2(610, 35), 34, Color.WHITE)
-	status_label = _make_label(game_ui, "Kalahkan lawan latihan!", Vector2(470, 105), 20, Color.WHITE)
-	_add_move_button(game_ui, "KIRI", Vector2(35, 590), Vector2(115, 80), -1)
-	_add_move_button(game_ui, "KANAN", Vector2(165, 590), Vector2(115, 80), 1)
-	_add_button(game_ui, "BERHENTI", Vector2(295, 590), Vector2(115, 80), func(): move_direction = 0)
-	block_button = Button.new()
-	block_button.text = "BLOCK"
-	block_button.position = Vector2(585, 590)
-	block_button.size = Vector2(125, 85)
-	block_button.add_theme_font_size_override("font_size", 20)
-	block_button.button_down.connect(func(): _set_blocking(true))
-	block_button.button_up.connect(func(): _set_blocking(false))
-	game_ui.add_child(block_button)
-	jump_button = _add_button(game_ui, "LOMPAT", Vector2(445, 590), Vector2(125, 85), _jump)
-	dash_button = _add_button(game_ui, "DASH", Vector2(735, 590), Vector2(145, 85), _use_dash)
-	skill_button = _add_button(game_ui, "SKILL", Vector2(900, 590), Vector2(150, 85), _use_skill)
-	_add_button(game_ui, "SERANG", Vector2(1080, 575), Vector2(160, 100), _attack)
-	stamina_label = _make_label(game_ui, "STAMINA", Vector2(30, 135), 16, Color("#a8f0c6"))
+	timer_label = _make_label(game_ui, "90", Vector2(610, 24), 32, Color.WHITE)
+	status_label = _make_label(game_ui, "Kalahkan lawan latihan!", Vector2(455, 92), 18, Color.WHITE)
+
+	stamina_label = _make_label(game_ui, "STAMINA", Vector2(30, 118), 14, Color("#a8f0c6"))
 	stamina_bar = ProgressBar.new()
-	stamina_bar.position = Vector2(30, 158)
-	stamina_bar.size = Vector2(250, 14)
+	stamina_bar.position = Vector2(30, 140)
+	stamina_bar.size = Vector2(230, 12)
 	stamina_bar.min_value = 0
 	stamina_bar.max_value = MAX_STAMINA
 	stamina_bar.value = MAX_STAMINA
 	stamina_bar.show_percentage = false
 	game_ui.add_child(stamina_bar)
-	result_button = _add_button(game_ui, "KEMBALI KE MENU", Vector2(510, 470), Vector2(260, 70), _return_to_menu)
+
+	# Tombol kiri dikelompokkan di sisi kiri bawah.
+	_add_move_button(game_ui, "◀\nKIRI", Vector2.ZERO, Vector2.ZERO, -1)
+	_set_ui_rect(game_ui.get_child(game_ui.get_child_count() - 1), 0.025, 0.80, 0.105, 0.96)
+	_add_move_button(game_ui, "KANAN\n▶", Vector2.ZERO, Vector2.ZERO, 1)
+	_set_ui_rect(game_ui.get_child(game_ui.get_child_count() - 1), 0.115, 0.80, 0.195, 0.96)
+	_add_button(game_ui, "STOP", Vector2.ZERO, Vector2.ZERO, func(): move_direction = 0)
+	_set_ui_rect(game_ui.get_child(game_ui.get_child_count() - 1), 0.205, 0.80, 0.275, 0.96)
+
+	# Pertahanan di tengah, tombol aksi utama dalam susunan 2 x 2 di kanan.
+	block_button = Button.new()
+	block_button.text = "BLOCK"
+	block_button.button_down.connect(func(): _set_blocking(true))
+	block_button.button_up.connect(func(): _set_blocking(false))
+	game_ui.add_child(block_button)
+	_set_ui_rect(block_button, 0.625, 0.82, 0.735, 0.96)
+	_style_game_button(block_button, Color("#3b8b78"), 18)
+
+	jump_button = _add_button(game_ui, "LOMPAT", Vector2.ZERO, Vector2.ZERO, _jump)
+	_set_ui_rect(jump_button, 0.765, 0.765, 0.875, 0.875)
+	_style_game_button(jump_button, Color("#426b9b"), 16)
+	dash_button = _add_button(game_ui, "DASH", Vector2.ZERO, Vector2.ZERO, _use_dash)
+	_set_ui_rect(dash_button, 0.885, 0.765, 0.975, 0.875)
+	_style_game_button(dash_button, Color("#426b9b"), 16)
+	skill_button = _add_button(game_ui, "SKILL", Vector2.ZERO, Vector2.ZERO, _use_skill)
+	_set_ui_rect(skill_button, 0.765, 0.89, 0.875, 0.99)
+	_style_game_button(skill_button, Color("#8b5ca8"), 16)
+	var attack_button := _add_button(game_ui, "SERANG", Vector2.ZERO, Vector2.ZERO, _attack)
+	_set_ui_rect(attack_button, 0.885, 0.89, 0.975, 0.99)
+	_style_game_button(attack_button, Color("#b94f5b"), 17)
+
+	result_button = _add_button(game_ui, "KEMBALI KE MENU", Vector2.ZERO, Vector2.ZERO, _return_to_menu)
+	_set_ui_rect(result_button, 0.39, 0.58, 0.61, 0.72)
 	result_button.visible = false
+	_style_game_button(result_button, Color("#426b9b"), 18)
+
+func _set_ui_rect(control: Control, left: float, top: float, right: float, bottom: float) -> void:
+	control.anchor_left = left
+	control.anchor_top = top
+	control.anchor_right = right
+	control.anchor_bottom = bottom
+	control.offset_left = 0.0
+	control.offset_top = 0.0
+	control.offset_right = 0.0
+	control.offset_bottom = 0.0
+
+func _style_game_button(button: Button, base_color: Color, font_size: int) -> void:
+	button.add_theme_font_size_override("font_size", font_size)
+	button.add_theme_color_override("font_color", Color.WHITE)
+	button.add_theme_color_override("font_hover_color", Color.WHITE)
+	button.add_theme_color_override("font_pressed_color", Color.WHITE)
+	button.focus_mode = Control.FOCUS_NONE
+	button.mouse_filter = Control.MOUSE_FILTER_STOP
+	var normal := StyleBoxFlat.new()
+	normal.bg_color = base_color
+	normal.corner_radius_top_left = 14
+	normal.corner_radius_top_right = 14
+	normal.corner_radius_bottom_left = 14
+	normal.corner_radius_bottom_right = 14
+	normal.border_width_left = 2
+	normal.border_width_top = 2
+	normal.border_width_right = 2
+	normal.border_width_bottom = 2
+	normal.border_color = base_color.lightened(0.25)
+	normal.content_margin_left = 5.0
+	normal.content_margin_right = 5.0
+	normal.content_margin_top = 4.0
+	normal.content_margin_bottom = 4.0
+	var hover := normal.duplicate() as StyleBoxFlat
+	hover.bg_color = base_color.lightened(0.14)
+	var pressed := normal.duplicate() as StyleBoxFlat
+	pressed.bg_color = base_color.darkened(0.18)
+	button.add_theme_stylebox_override("normal", normal)
+	button.add_theme_stylebox_override("hover", hover)
+	button.add_theme_stylebox_override("pressed", pressed)
+	button.add_theme_stylebox_override("focus", normal)
+
 
 func _set_blocking(value: bool) -> void:
 	is_blocking = value and game_started and not match_over and player_stun_time <= 0.0 and stamina > 0.0 and block_broken_time <= 0.0
@@ -481,13 +541,10 @@ func _return_to_menu() -> void:
 func _add_move_button(parent: Control, value: String, pos: Vector2, button_size: Vector2, direction: int) -> void:
 	var button := Button.new()
 	button.text = value
-	button.position = pos
-	button.size = button_size
-	button.add_theme_font_size_override("font_size", 20)
 	button.button_down.connect(func(): move_direction = direction)
 	button.button_up.connect(func(): move_direction = 0)
 	parent.add_child(button)
-
+	_style_game_button(button, Color("#344e70"), 16)
 func _make_label(parent: Control, value: String, pos: Vector2, font_size: int, color: Color) -> Label:
 	var label := Label.new()
 	label.text = value
@@ -500,13 +557,10 @@ func _make_label(parent: Control, value: String, pos: Vector2, font_size: int, c
 func _add_button(parent: Control, value: String, pos: Vector2, button_size: Vector2, action: Callable) -> Button:
 	var button := Button.new()
 	button.text = value
-	button.position = pos
-	button.size = button_size
-	button.add_theme_font_size_override("font_size", 20)
 	button.pressed.connect(action)
 	parent.add_child(button)
+	_style_game_button(button, Color("#344e70"), 18)
 	return button
-
 func _attack() -> void:
 	if not game_started or match_over or attack_cooldown > 0.0 or player_stun_time > 0.0:
 		return
