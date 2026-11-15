@@ -27,6 +27,7 @@ var dash_time := 0.0
 var jump_height := 0.0
 var jump_velocity := 0.0
 var landing_time := 0.0
+var jump_takeoff_time := 0.0
 var player_facing := 1
 var attack_animation_time := 0.0
 var attack_animation_duration := 0.32
@@ -157,6 +158,7 @@ func _process(delta: float) -> void:
 		return
 	animation_time += delta
 	landing_time = maxf(0.0, landing_time - delta)
+	jump_takeoff_time = maxf(0.0, jump_takeoff_time - delta)
 	attack_animation_time = maxf(0.0, attack_animation_time - delta)
 	enemy_attack_animation_time = maxf(0.0, enemy_attack_animation_time - delta)
 	player_hit_flash = maxf(0.0, player_hit_flash - delta)
@@ -323,7 +325,7 @@ func _draw() -> void:
 			var trail_offset := float(trail_index) * 17.0 * float(player_facing)
 			draw_line(Vector2(player_x - trail_offset, FLOOR_Y - 75.0), Vector2(player_x - trail_offset - 24.0 * float(player_facing), FLOOR_Y - 75.0), trail_color, 5.0 - float(trail_index) * 0.7, true)
 	draw_circle(Vector2(player_x, FLOOR_Y - 3.0), 23.0 - minf(jump_height * 0.035, 12.0), Color(0.02, 0.04, 0.08, 0.28))
-	_draw_fighter(player_x, FLOOR_Y - jump_height, player_tint, player_facing, str(player_stats["weapon"]), move_direction != 0 or dash_time > 0.0, maxf(attack_animation_time, skill_animation_time), 0.42 if skill_animation_time > attack_animation_time else attack_animation_duration, dash_time > 0.0, jump_height > 0.0, combo_step, player_hit_flash, selected_character, landing_time)
+	_draw_fighter(player_x, FLOOR_Y - jump_height, player_tint, player_facing, str(player_stats["weapon"]), move_direction != 0 or dash_time > 0.0, maxf(attack_animation_time, skill_animation_time), 0.42 if skill_animation_time > attack_animation_time else attack_animation_duration, dash_time > 0.0, jump_height > 0.0, combo_step, player_hit_flash, selected_character, landing_time, jump_velocity, jump_takeoff_time)
 	_draw_fighter(enemy_x, FLOOR_Y, enemy_tint, enemy_facing, "AXE", absf(enemy_x - player_x) > 125.0, enemy_attack_animation_time, 0.24, false, false, 1, enemy_hit_flash, "Axeman")
 	if enemy_attack_windup > 0.0:
 		var tell_progress := 1.0 - clampf(enemy_attack_windup / (0.48 if enemy_attack_heavy else 0.28), 0.0, 1.0)
@@ -412,7 +414,7 @@ func _draw_arena_background() -> void:
 		draw_line(Vector2(float(x), FLOOR_Y + 8), Vector2(640.0 + (float(x) - 640.0) * 1.35, 720.0), Color(0.55, 0.68, 0.82, 0.10), 1.0)
 	draw_line(Vector2(0, 710), Vector2(1280, 710), Color("#40536a"), 2.0)
 
-func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon: String, walking: bool, attack_time: float, attack_duration: float, dashing: bool, airborne: bool, combo_style: int, hit_time: float, fighter_name: String, landing: float = 0.0) -> void:
+func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon: String, walking: bool, attack_time: float, attack_duration: float, dashing: bool, airborne: bool, combo_style: int, hit_time: float, fighter_name: String, landing: float = 0.0, vertical_velocity: float = 0.0, takeoff: float = 0.0) -> void:
 	# Rig prosedural: ritme langkah, pusat berat, dan pose serangan dibangun dari waktu.
 	var gait_rate := 18.0 if dashing else (11.5 if walking else 2.2)
 	var phase := animation_time * gait_rate
@@ -504,15 +506,23 @@ func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon
 		back_hand = back_elbow + Vector2(-12.0 * direction, -16.0)
 
 	if airborne:
-		# Pose melayang: lutut terangkat dan kedua tangan terbuka untuk menjaga keseimbangan.
-		front_knee = hip + Vector2(25.0 * direction, 7.0)
-		front_foot = front_knee + Vector2(15.0 * direction, -16.0)
-		back_knee = hip + Vector2(-19.0 * direction, 13.0)
-		back_foot = back_knee + Vector2(-13.0 * direction, -15.0)
-		front_elbow = shoulder + Vector2(23.0 * direction, -19.0)
-		front_hand = front_elbow + Vector2(18.0 * direction, -10.0)
-		back_elbow = shoulder + Vector2(-22.0 * direction, -15.0)
-		back_hand = back_elbow + Vector2(-17.0 * direction, -8.0)
+		# Pose udara berubah: menolak saat naik, lebih rapat dan siap mendarat saat turun.
+		var falling := vertical_velocity <= 0.0
+		var air_tuck := 1.0 if falling else 0.0
+		front_knee = hip + Vector2(22.0 * direction, 9.0 + air_tuck * 8.0)
+		front_foot = front_knee + Vector2(13.0 * direction, -14.0 + air_tuck * 7.0)
+		back_knee = hip + Vector2(-18.0 * direction, 13.0 + air_tuck * 7.0)
+		back_foot = back_knee + Vector2(-12.0 * direction, -13.0 + air_tuck * 8.0)
+		front_elbow = shoulder + Vector2(23.0 * direction, -19.0 + air_tuck * 10.0)
+		front_hand = front_elbow + Vector2(18.0 * direction, -10.0 + air_tuck * 13.0)
+		back_elbow = shoulder + Vector2(-22.0 * direction, -15.0 + air_tuck * 9.0)
+		back_hand = back_elbow + Vector2(-17.0 * direction, -8.0 + air_tuck * 12.0)
+		if takeoff > 0.0:
+			var push := clampf(takeoff / 0.12, 0.0, 1.0)
+			front_knee.y += 9.0 * push
+			back_knee.y += 9.0 * push
+			front_hand.y -= 8.0 * push
+			back_hand.y -= 8.0 * push
 
 	draw_line(hip, back_knee, tint, 7.0, true)
 	draw_line(back_knee, back_foot, tint, 7.0, true)
@@ -726,6 +736,7 @@ func _start_match() -> void:
 	jump_height = 0.0
 	jump_velocity = 0.0
 	landing_time = 0.0
+	jump_takeoff_time = 0.0
 	player_facing = 1
 	player_stun_time = 0.0
 	enemy_stun_time = 0.0
@@ -848,6 +859,7 @@ func _jump() -> void:
 	if not game_started or match_over or jump_height > 0.0 or player_stun_time > 0.0:
 		return
 	jump_velocity = 620.0
+	jump_takeoff_time = 0.12
 	_play_sfx("jump")
 	status_label.text = "LOMPAT!"
 	queue_redraw()
