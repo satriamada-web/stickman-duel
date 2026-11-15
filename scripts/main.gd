@@ -635,6 +635,7 @@ func _attack() -> void:
 	attack_cooldown = 0.28
 	attack_animation_duration = 0.32
 	attack_animation_time = attack_animation_duration
+	_play_sfx("sword" if selected_character == "Swordman" else ("axe" if selected_character == "Axeman" else "spear"))
 
 	var stats: Dictionary = CHARACTERS[selected_character]
 	var base_damage := int(stats["damage"])
@@ -663,7 +664,7 @@ func _attack() -> void:
 		enemy_attack_windup = 0.0
 		enemy_attack_animation_time = 0.0
 		enemy_hit_flash = 0.18
-		_play_sfx("heavy" if combo_step == 3 else ("sword" if selected_character == "Swordman" else ("axe" if selected_character == "Axeman" else "spear")))
+		_play_sfx("heavy" if combo_step == 3 else "impact")
 		impact_effect_time = 0.24
 		impact_effect_x = enemy_x
 		status_label.text = "%s — %s! Lawan kehilangan %d HP." % [selected_character.to_upper(), combo_names[combo_step], damage]
@@ -722,6 +723,7 @@ func _use_skill() -> void:
 		enemy_attack_animation_time = 0.0
 		enemy_knockback_velocity = (1.0 if enemy_x >= player_x else -1.0) * 520.0
 		enemy_hit_flash = 0.28
+		_play_sfx("impact")
 		impact_effect_time = 0.24
 		impact_effect_x = enemy_x
 		status_label.text = "%s! Lawan kehilangan %d HP." % [skill_name, skill_damage]
