@@ -781,6 +781,7 @@ func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon
 
 func _build_ui() -> void:
 	var layer := CanvasLayer.new()
+	layer.layer = 5
 	add_child(layer)
 	var root := Control.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -789,29 +790,57 @@ func _build_ui() -> void:
 	menu_ui = Control.new()
 	menu_ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.add_child(menu_ui)
-	_make_label(menu_ui, "STICKMAN DUEL", Vector2(92, 62), 54, Color("#f4f7ff"))
-	_make_label(menu_ui, "ANIME FIGHTING ARENA  /  CHOOSE YOUR WARRIOR", Vector2(98, 126), 18, Color("#91b9ff"))
-	_make_label(menu_ui, "PILIH PETARUNGMU", Vector2(100, 205), 27, Color("#e7edff"))
-	_make_label(menu_ui, "Setiap petarung memiliki gaya bertarung dan keunggulan berbeda.", Vector2(100, 238), 16, Color("#a9b9d8"))
-	var sword_card := _add_button(menu_ui, "SWORDMAN\n\nFAST & BALANCED\n100 HP  |  15 ATK", Vector2(100, 300), Vector2(320, 172), func(): _select_character("Swordman"))
-	var axe_card := _add_button(menu_ui, "AXEMAN\n\nPOWER & HEAVY\n110 HP  |  22 ATK", Vector2(480, 300), Vector2(320, 172), func(): _select_character("Axeman"))
-	var spear_card := _add_button(menu_ui, "SPEARMAN\n\nAGILE & LONG RANGE\n90 HP  |  12 ATK", Vector2(860, 300), Vector2(320, 172), func(): _select_character("Spearman"))
-	character_buttons = {"Swordman": sword_card, "Axeman": axe_card, "Spearman": spear_card}
-	_style_game_button(sword_card, Color("#1765b9"), 21)
-	_style_game_button(axe_card, Color("#a94d25"), 21)
-	_style_game_button(spear_card, Color("#287b59"), 21)
-	selection_label = _make_label(menu_ui, "SELECTED: SWORDMAN", Vector2(100, 510), 20, Color("#73caff"))
-	var start_button := _add_button(menu_ui, "START BATTLE  >>", Vector2(860, 555), Vector2(320, 82), _start_match)
-	_style_game_button(start_button, Color("#d18b22"), 24)
+
+	# Header dan identitas visual menu utama.
+	var eyebrow := _make_label(menu_ui, "THE ULTIMATE STICK FIGHTING ARENA", Vector2(76, 54), 15, Color("#72d9ff"))
+	eyebrow.add_theme_color_override("font_shadow_color", Color("#1674b9"))
+	eyebrow.add_theme_constant_override("shadow_offset_x", 1)
+	eyebrow.add_theme_constant_override("shadow_offset_y", 2)
+	var logo := _make_label(menu_ui, "STICKMAN", Vector2(70, 88), 64, Color("#f5f8ff"))
+	logo.add_theme_color_override("font_shadow_color", Color("#286bba"))
+	logo.add_theme_constant_override("shadow_offset_x", 3)
+	logo.add_theme_constant_override("shadow_offset_y", 4)
+	_make_label(menu_ui, "DUEL", Vector2(72, 151), 58, Color("#62d8ff"))
+	_make_label(menu_ui, "FIGHT. EVOLVE. DOMINATE.", Vector2(78, 222), 19, Color("#d5e4ff"))
+	_make_label(menu_ui, "Pilih petarung. Kuasai arena. Jadilah legenda.", Vector2(78, 254), 16, Color("#a8b9d7"))
+
+	# Panel pilihan karakter.
+	var section := _make_label(menu_ui, "CHOOSE YOUR FIGHTER", Vector2(78, 342), 18, Color("#f2f6ff"))
+	section.add_theme_color_override("font_shadow_color", Color("#000000"))
+	var hint := _make_label(menu_ui, "Setiap karakter punya gaya bertarung unik", Vector2(78, 370), 14, Color("#91a9ca"))
+	var card_data := [
+		{"name":"Swordman", "title":"SWORDMAN", "detail":"BALANCED  /  100 HP  /  15 ATK", "color":Color("#167fce")},
+		{"name":"Axeman", "title":"AXEMAN", "detail":"HEAVY  /  110 HP  /  22 ATK", "color":Color("#bd6334")},
+		{"name":"Spearman", "title":"SPEARMAN", "detail":"AGILE  /  90 HP  /  12 ATK", "color":Color("#348c69")}
+	]
+	character_buttons = {}
+	for i in range(card_data.size()):
+		var data: Dictionary = card_data[i]
+		var card := Button.new()
+		card.text = "%s\n\n%s" % [data["title"], data["detail"]]
+		card.add_theme_font_size_override("font_size", 17)
+		card.pressed.connect(_select_character.bind(str(data["name"])))
+		menu_ui.add_child(card)
+		var left := 0.06 + float(i) * 0.205
+		_set_ui_rect(card, left, 0.59, left + 0.19, 0.77)
+		_style_game_button(card, data["color"], 16)
+		character_buttons[str(data["name"])] = card
+
+	selection_label = _make_label(menu_ui, "SELECTED: SWORDMAN", Vector2(78, 572), 17, Color("#70d9ff"))
+	var play_button := _add_button(menu_ui, "PLAY  ▶", Vector2.ZERO, Vector2.ZERO, _start_match)
+	_set_ui_rect(play_button, 0.72, 0.81, 0.94, 0.94)
+	_style_game_button(play_button, Color("#087fc1"), 25)
+	var version_label := _make_label(menu_ui, "MOBILE EDITION  •  v0.1", Vector2(80, 674), 12, Color("#7185a7"))
 	_select_character(selected_character)
 
+	# HUD pertarungan.
 	game_ui = Control.new()
 	game_ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	game_ui.visible = false
 	root.add_child(game_ui)
-	_make_label(game_ui, "STICKMAN DUEL | TRAINING ARENA", Vector2(30, 18), 24, Color.WHITE)
-	player_hp_label = _make_label(game_ui, "PLAYER 1 | HP: 100", Vector2(30, 60), 19, Color("#55c7ff"))
-	enemy_hp_label = _make_label(game_ui, "OPPONENT | HP: 100", Vector2(930, 60), 19, Color("#ff687d"))
+	_make_label(game_ui, "STICKMAN DUEL  /  TRAINING ARENA", Vector2(30, 18), 22, Color.WHITE)
+	player_hp_label = _make_label(game_ui, "PLAYER 1 | HP: 100", Vector2(30, 60), 18, Color("#55c7ff"))
+	enemy_hp_label = _make_label(game_ui, "OPPONENT | HP: 100", Vector2(930, 60), 18, Color("#ff687d"))
 	player_hp_bar = ProgressBar.new()
 	player_hp_bar.position = Vector2(30, 88)
 	player_hp_bar.size = Vector2(330, 18)
@@ -839,24 +868,22 @@ func _build_ui() -> void:
 	stamina_bar.show_percentage = false
 	game_ui.add_child(stamina_bar)
 
-	# Tombol kiri dikelompokkan di sisi kiri bawah.
 	_add_move_button(game_ui, "◀\nKIRI", Vector2.ZERO, Vector2.ZERO, -1)
 	_set_ui_rect(game_ui.get_child(game_ui.get_child_count() - 1), 0.025, 0.80, 0.105, 0.96)
 	_add_move_button(game_ui, "KANAN\n▶", Vector2.ZERO, Vector2.ZERO, 1)
 	_set_ui_rect(game_ui.get_child(game_ui.get_child_count() - 1), 0.115, 0.80, 0.195, 0.96)
-	_add_button(game_ui, "STOP", Vector2.ZERO, Vector2.ZERO, func(): move_direction = 0)
-	_set_ui_rect(game_ui.get_child(game_ui.get_child_count() - 1), 0.205, 0.80, 0.275, 0.96)
+	var stop_button := _add_button(game_ui, "STOP", Vector2.ZERO, Vector2.ZERO, func(): move_direction = 0)
+	_set_ui_rect(stop_button, 0.205, 0.80, 0.275, 0.96)
 
-	# Pertahanan di tengah, tombol aksi utama dalam susunan 2 x 2 di kanan.
 	block_button = Button.new()
 	block_button.text = "BLOCK"
 	block_button.button_down.connect(func(): _set_blocking(true))
 	block_button.button_up.connect(func(): _set_blocking(false))
 	game_ui.add_child(block_button)
 	_set_ui_rect(block_button, 0.625, 0.82, 0.735, 0.96)
-	_style_game_button(block_button, Color("#3b8b78"), 18)
+	_style_game_button(block_button, Color("#287f78"), 18)
 
-	jump_button = _add_button(game_ui, "LOMPAT", Vector2.ZERO, Vector2.ZERO, _jump)
+	jump_button = _add_button(game_ui, "JUMP", Vector2.ZERO, Vector2.ZERO, _jump)
 	_set_ui_rect(jump_button, 0.765, 0.765, 0.875, 0.875)
 	_style_game_button(jump_button, Color("#426b9b"), 16)
 	dash_button = _add_button(game_ui, "DASH", Vector2.ZERO, Vector2.ZERO, _use_dash)
@@ -864,12 +891,12 @@ func _build_ui() -> void:
 	_style_game_button(dash_button, Color("#426b9b"), 16)
 	skill_button = _add_button(game_ui, "SKILL", Vector2.ZERO, Vector2.ZERO, _use_skill)
 	_set_ui_rect(skill_button, 0.765, 0.89, 0.875, 0.99)
-	_style_game_button(skill_button, Color("#8b5ca8"), 16)
-	var attack_button := _add_button(game_ui, "SERANG", Vector2.ZERO, Vector2.ZERO, _attack)
+	_style_game_button(skill_button, Color("#8054a8"), 16)
+	var attack_button := _add_button(game_ui, "ATTACK", Vector2.ZERO, Vector2.ZERO, _attack)
 	_set_ui_rect(attack_button, 0.885, 0.89, 0.975, 0.99)
 	_style_game_button(attack_button, Color("#b94f5b"), 17)
 
-	result_button = _add_button(game_ui, "KEMBALI KE MENU", Vector2.ZERO, Vector2.ZERO, _return_to_menu)
+	result_button = _add_button(game_ui, "BACK TO MENU", Vector2.ZERO, Vector2.ZERO, _return_to_menu)
 	_set_ui_rect(result_button, 0.39, 0.58, 0.61, 0.72)
 	result_button.visible = false
 	_style_game_button(result_button, Color("#426b9b"), 18)
