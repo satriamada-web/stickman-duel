@@ -22,6 +22,9 @@ var time_left := MATCH_LENGTH
 var attack_cooldown := 0.0
 var skill_cooldown := 0.0
 var skill_animation_time := 0.0
+var skill_cinematic_time := 0.0
+var skill_cinematic_x := 0.0
+var skill_cinematic_color := Color.WHITE
 var dash_cooldown := 0.0
 var dash_time := 0.0
 var jump_height := 0.0
@@ -194,6 +197,7 @@ func _process(delta: float) -> void:
 		combo_step = 0
 	skill_cooldown = maxf(0.0, skill_cooldown - delta)
 	skill_animation_time = maxf(0.0, skill_animation_time - delta)
+	skill_cinematic_time = maxf(0.0, skill_cinematic_time - delta)
 	dash_cooldown = maxf(0.0, dash_cooldown - delta)
 	dash_time = maxf(0.0, dash_time - delta)
 	if jump_height > 0.0 or jump_velocity > 0.0:
@@ -352,6 +356,21 @@ func _draw() -> void:
 		draw_string(ThemeDB.fallback_font, Vector2(player_x - 82.0, FLOOR_Y - 170.0), "PARRY!", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color(0.65, 0.96, 1.0, parry_alpha))
 	if counter_window > 0.0:
 		draw_string(ThemeDB.fallback_font, Vector2(player_x - 70.0, FLOOR_Y - 188.0), "COUNTER READY", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("#a8f0c6"))
+	if skill_cinematic_time > 0.0:
+		var cinematic_progress := 1.0 - skill_cinematic_time / 0.62
+		var cinematic_alpha := clampf(skill_cinematic_time / 0.62, 0.0, 1.0)
+		var cinematic_radius := 28.0 + cinematic_progress * 145.0
+		var cinematic_tint := skill_cinematic_color
+		cinematic_tint.a = cinematic_alpha * 0.82
+		draw_arc(Vector2(skill_cinematic_x, FLOOR_Y - 82.0), cinematic_radius, -1.15, 1.15, 36, cinematic_tint, 5.0)
+		draw_arc(Vector2(skill_cinematic_x, FLOOR_Y - 82.0), cinematic_radius * 0.72, 1.9, 4.35, 30, Color(1.0, 1.0, 1.0, cinematic_alpha * 0.65), 2.5)
+		for ray_index in range(12):
+			var ray_angle := TAU * float(ray_index) / 12.0 + cinematic_progress * 0.35
+			var ray_start := Vector2(cos(ray_angle), sin(ray_angle)) * (cinematic_radius * 0.72)
+			var ray_end := Vector2(cos(ray_angle), sin(ray_angle)) * (cinematic_radius + 15.0)
+			draw_line(Vector2(skill_cinematic_x, FLOOR_Y - 82.0) + ray_start, Vector2(skill_cinematic_x, FLOOR_Y - 82.0) + ray_end, cinematic_tint, 2.0, true)
+		draw_string(ThemeDB.fallback_font, Vector2(skill_cinematic_x - 72.0, FLOOR_Y - 205.0), "SPECIAL MOVE!", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, cinematic_tint)
+
 	if impact_effect_time > 0.0:
 		var impact_y := FLOOR_Y - 78.0
 		var impact_progress := 1.0 - impact_effect_time / 0.24
@@ -509,7 +528,7 @@ func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon
 	if attack_time > 0.0:
 		var progress := 1.0 - clampf(attack_time / maxf(attack_duration, 0.01), 0.0, 1.0)
 		# 0-25% anticipation
-, 25-68% strike, 68-100% follow-through.
+# 25-68% strike, 68-100% follow-through.
 		var anticipation := 1.0 - clampf(progress / 0.25, 0.0, 1.0)
 		var strike_progress := clampf((progress - 0.25) / 0.43, 0.0, 1.0)
 		var strike := sin(strike_progress * PI * 0.5)
@@ -1055,7 +1074,10 @@ func _use_skill() -> void:
 		skill_damage = roundi(float(skill_damage) * 1.5)
 		counter_window = 0.0
 	skill_cooldown = 6.0
-	skill_animation_time = 0.42
+	skill_animation_time = 0.58
+	skill_cinematic_time = 0.62
+	skill_cinematic_x = player_x
+	skill_cinematic_color = Color(CHARACTERS[selected_character]["color"])
 	_play_sfx("skill")
 	if absf(enemy_x - player_x) <= skill_range:
 		enemy_hp = maxi(0, enemy_hp - skill_damage)
