@@ -20,6 +20,8 @@ var skill_cooldown := 0.0
 var skill_animation_time := 0.0
 var dash_cooldown := 0.0
 var dash_time := 0.0
+var jump_height := 0.0
+var jump_velocity := 0.0
 var player_facing := 1
 var attack_animation_time := 0.0
 var enemy_attack_animation_time := 0.0
@@ -43,6 +45,7 @@ var selection_label: Label
 var result_button: Button
 var skill_button: Button
 var dash_button: Button
+var jump_button: Button
 var player_hp_bar: ProgressBar
 var enemy_hp_bar: ProgressBar
 
@@ -60,6 +63,8 @@ func _input(event: InputEvent) -> void:
 			move_direction = 1
 		elif event.keycode == KEY_SPACE:
 			_attack()
+		elif event.keycode == KEY_W or event.keycode == KEY_UP:
+			_jump()
 	elif event is InputEventKey and not event.pressed:
 		if event.keycode in [KEY_A, KEY_D, KEY_LEFT, KEY_RIGHT]:
 			move_direction = 0
@@ -79,6 +84,12 @@ func _process(delta: float) -> void:
 	skill_animation_time = maxf(0.0, skill_animation_time - delta)
 	dash_cooldown = maxf(0.0, dash_cooldown - delta)
 	dash_time = maxf(0.0, dash_time - delta)
+	if jump_height > 0.0 or jump_velocity > 0.0:
+		jump_height += jump_velocity * delta
+		jump_velocity -= 1500.0 * delta
+		if jump_height <= 0.0:
+			jump_height = 0.0
+			jump_velocity = 0.0
 	enemy_attack_cooldown = maxf(0.0, enemy_attack_cooldown - delta)
 	var stats: Dictionary = CHARACTERS[selected_character]
 	if move_direction != 0:
@@ -96,7 +107,7 @@ func _process(delta: float) -> void:
 	elif enemy_attack_cooldown <= 0.0:
 		enemy_attack_animation_time = 0.24
 		enemy_attack_cooldown = 1.35
-		if dash_time <= 0.0:
+		if dash_time <= 0.0 and jump_height < 45.0:
 			player_hp = maxi(0, player_hp - 8)
 			player_hit_flash = 0.22
 			impact_effect_time = 0.24
@@ -126,7 +137,8 @@ func _draw() -> void:
 		for trail_index in range(1, 5):
 			var trail_offset := float(trail_index) * 17.0 * float(player_facing)
 			draw_line(Vector2(player_x - trail_offset, FLOOR_Y - 75.0), Vector2(player_x - trail_offset - 24.0 * float(player_facing), FLOOR_Y - 75.0), trail_color, 5.0 - float(trail_index) * 0.7, true)
-	_draw_fighter(player_x, FLOOR_Y, player_tint, player_facing, str(player_stats["weapon"]), move_direction != 0 or dash_time > 0.0, maxf(attack_animation_time, skill_animation_time), 0.42 if skill_animation_time > attack_animation_time else 0.22, dash_time > 0.0)
+	draw_circle(Vector2(player_x, FLOOR_Y - 3.0), 23.0 - minf(jump_height * 0.035, 12.0), Color(0.02, 0.04, 0.08, 0.28))
+	_draw_fighter(player_x, FLOOR_Y - jump_height, player_tint, player_facing, str(player_stats["weapon"]), move_direction != 0 or dash_time > 0.0, maxf(attack_animation_time, skill_animation_time), 0.42 if skill_animation_time > attack_animation_time else 0.22, dash_time > 0.0)
 	_draw_fighter(enemy_x, FLOOR_Y, enemy_tint, -1, "AXE", absf(enemy_x - player_x) > 125.0, enemy_attack_animation_time, 0.24, false)
 	if impact_effect_time > 0.0:
 		var impact_y := FLOOR_Y - 78.0
@@ -261,6 +273,7 @@ func _build_ui() -> void:
 	_add_move_button(game_ui, "KIRI", Vector2(35, 590), Vector2(115, 80), -1)
 	_add_move_button(game_ui, "KANAN", Vector2(165, 590), Vector2(115, 80), 1)
 	_add_button(game_ui, "BERHENTI", Vector2(295, 590), Vector2(115, 80), func(): move_direction = 0)
+	jump_button = _add_button(game_ui, "LOMPAT", Vector2(445, 590), Vector2(125, 85), _jump)
 	dash_button = _add_button(game_ui, "DASH", Vector2(735, 590), Vector2(145, 85), _use_dash)
 	skill_button = _add_button(game_ui, "SKILL", Vector2(900, 590), Vector2(150, 85), _use_skill)
 	_add_button(game_ui, "SERANG", Vector2(1080, 575), Vector2(160, 100), _attack)
@@ -286,6 +299,8 @@ func _start_match() -> void:
 	skill_animation_time = 0.0
 	dash_cooldown = 0.0
 	dash_time = 0.0
+	jump_height = 0.0
+	jump_velocity = 0.0
 	player_facing = 1
 	enemy_attack_cooldown = 0.0
 	move_direction = 0
@@ -351,6 +366,13 @@ func _attack() -> void:
 		status_label.text = "Terlalu jauh! Dekati lawan terlebih dahulu."
 
 
+
+func _jump() -> void:
+	if not game_started or match_over or jump_height > 0.0:
+		return
+	jump_velocity = 620.0
+	status_label.text = "LOMPAT!"
+	queue_redraw()
 
 func _use_dash() -> void:
 	if not game_started or match_over or dash_cooldown > 0.0:
