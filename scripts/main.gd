@@ -35,6 +35,8 @@ var enemy_attack_animation_time := 0.0
 var animation_time := 0.0
 var player_hit_flash := 0.0
 var enemy_hit_flash := 0.0
+var player_stun_time := 0.0
+var enemy_stun_time := 0.0
 var impact_effect_time := 0.0
 var impact_effect_x := 0.0
 var enemy_attack_cooldown := 0.0
@@ -94,6 +96,8 @@ func _process(delta: float) -> void:
 	enemy_attack_animation_time = maxf(0.0, enemy_attack_animation_time - delta)
 	player_hit_flash = maxf(0.0, player_hit_flash - delta)
 	enemy_hit_flash = maxf(0.0, enemy_hit_flash - delta)
+	player_stun_time = maxf(0.0, player_stun_time - delta)
+	enemy_stun_time = maxf(0.0, enemy_stun_time - delta)
 	impact_effect_time = maxf(0.0, impact_effect_time - delta)
 	block_broken_time = maxf(0.0, block_broken_time - delta)
 	if is_blocking:
@@ -122,14 +126,17 @@ func _process(delta: float) -> void:
 			jump_velocity = 0.0
 	enemy_attack_cooldown = maxf(0.0, enemy_attack_cooldown - delta)
 	var stats: Dictionary = CHARACTERS[selected_character]
-	if move_direction != 0:
+	if move_direction != 0 and player_stun_time <= 0.0:
 		player_facing = move_direction
 	var current_speed := float(stats["speed"])
-	if dash_time > 0.0:
-		current_speed = 900.0
-		player_x = clampf(player_x + player_facing * current_speed * delta, 70.0, 1210.0)
+	if player_stun_time <= 0.0:
+		if dash_time > 0.0:
+			current_speed = 900.0
+			player_x = clampf(player_x + player_facing * current_speed * delta, 70.0, 1210.0)
+		else:
+			player_x = clampf(player_x + move_direction * current_speed * delta, 70.0, 1210.0)
 	else:
-		player_x = clampf(player_x + move_direction * current_speed * delta, 70.0, 1210.0)
+		dash_time = 0.0
 
 	if absf(enemy_knockback_velocity) > 8.0:
 		enemy_x = clampf(enemy_x + enemy_knockback_velocity * delta, 70.0, 1210.0)
@@ -138,7 +145,9 @@ func _process(delta: float) -> void:
 		enemy_knockback_velocity = 0.0
 
 	var distance := absf(enemy_x - player_x)
-	if distance > 125.0 and absf(enemy_knockback_velocity) <= 8.0:
+	if enemy_stun_time > 0.0:
+		pass
+	elif distance > 125.0 and absf(enemy_knockback_velocity) <= 8.0:
 		enemy_x = move_toward(enemy_x, player_x, 145.0 * delta)
 	elif distance <= 125.0 and enemy_attack_cooldown <= 0.0 and absf(enemy_knockback_velocity) <= 8.0:
 		enemy_attack_animation_time = 0.24
@@ -151,6 +160,7 @@ func _process(delta: float) -> void:
 			if not is_blocking:
 				player_x = clampf(player_x - float(player_facing) * 95.0, 70.0, 1210.0)
 			player_hit_flash = 0.22
+			player_stun_time = 0.06 if is_blocking else 0.20
 			impact_effect_time = 0.24
 			impact_effect_x = player_x
 			status_label.text = "BLOCK BERHASIL! Damage hanya %d." % incoming_damage if is_blocking else "KAMU TERKENA SERANGAN!"
@@ -418,6 +428,8 @@ func _start_match() -> void:
 	jump_height = 0.0
 	jump_velocity = 0.0
 	player_facing = 1
+	player_stun_time = 0.0
+	enemy_stun_time = 0.0
 	enemy_attack_cooldown = 0.0
 	move_direction = 0
 	is_blocking = false
@@ -471,7 +483,7 @@ func _add_button(parent: Control, value: String, pos: Vector2, button_size: Vect
 	return button
 
 func _attack() -> void:
-	if not game_started or match_over or attack_cooldown > 0.0:
+	if not game_started or match_over or attack_cooldown > 0.0 or player_stun_time > 0.0:
 		return
 
 	# Tiga input berurutan dalam jendela waktu membentuk combo.
@@ -507,6 +519,7 @@ func _attack() -> void:
 		elif combo_step == 3:
 			knockback_strength = 620.0
 		enemy_knockback_velocity = knockback_direction * knockback_strength
+		enemy_stun_time = 0.12 if combo_step == 1 else (0.20 if combo_step == 2 else 0.36)
 		enemy_hit_flash = 0.18
 		impact_effect_time = 0.24
 		impact_effect_x = enemy_x
@@ -536,7 +549,7 @@ func _use_dash() -> void:
 	queue_redraw()
 
 func _use_skill() -> void:
-	if not game_started or match_over or skill_cooldown > 0.0:
+	if not game_started or match_over or skill_cooldown > 0.0 or player_stun_time > 0.0:
 		return
 	var skill_name := ""
 	var skill_damage := 0
@@ -558,6 +571,8 @@ func _use_skill() -> void:
 	skill_animation_time = 0.42
 	if absf(enemy_x - player_x) <= skill_range:
 		enemy_hp = maxi(0, enemy_hp - skill_damage)
+		enemy_stun_time = 0.30
+		enemy_knockback_velocity = (1.0 if enemy_x >= player_x else -1.0) * 520.0
 		enemy_hit_flash = 0.28
 		impact_effect_time = 0.24
 		impact_effect_x = enemy_x
