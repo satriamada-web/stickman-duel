@@ -212,8 +212,8 @@ func _draw() -> void:
 			var trail_offset := float(trail_index) * 17.0 * float(player_facing)
 			draw_line(Vector2(player_x - trail_offset, FLOOR_Y - 75.0), Vector2(player_x - trail_offset - 24.0 * float(player_facing), FLOOR_Y - 75.0), trail_color, 5.0 - float(trail_index) * 0.7, true)
 	draw_circle(Vector2(player_x, FLOOR_Y - 3.0), 23.0 - minf(jump_height * 0.035, 12.0), Color(0.02, 0.04, 0.08, 0.28))
-	_draw_fighter(player_x, FLOOR_Y - jump_height, player_tint, player_facing, str(player_stats["weapon"]), move_direction != 0 or dash_time > 0.0, maxf(attack_animation_time, skill_animation_time), 0.42 if skill_animation_time > attack_animation_time else attack_animation_duration, dash_time > 0.0, jump_height > 0.0, combo_step, player_hit_flash)
-	_draw_fighter(enemy_x, FLOOR_Y, enemy_tint, -1, "AXE", absf(enemy_x - player_x) > 125.0, enemy_attack_animation_time, 0.24, false, false, 1, enemy_hit_flash)
+	_draw_fighter(player_x, FLOOR_Y - jump_height, player_tint, player_facing, str(player_stats["weapon"]), move_direction != 0 or dash_time > 0.0, maxf(attack_animation_time, skill_animation_time), 0.42 if skill_animation_time > attack_animation_time else attack_animation_duration, dash_time > 0.0, jump_height > 0.0, combo_step, player_hit_flash, selected_character)
+	_draw_fighter(enemy_x, FLOOR_Y, enemy_tint, -1, "AXE", absf(enemy_x - player_x) > 125.0, enemy_attack_animation_time, 0.24, false, false, 1, enemy_hit_flash, "Axeman")
 	if impact_effect_time > 0.0:
 		var impact_y := FLOOR_Y - 78.0
 		var impact_progress := 1.0 - impact_effect_time / 0.24
@@ -227,12 +227,16 @@ func _draw() -> void:
 			var ray_end := Vector2(cos(angle), sin(angle)) * (burst_radius + 12.0)
 			draw_line(Vector2(impact_effect_x, impact_y) + ray_start, Vector2(impact_effect_x, impact_y) + ray_end, burst_color, 3.0)
 
-func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon: String, walking: bool, attack_time: float, attack_duration: float, dashing: bool, airborne: bool, combo_style: int, hit_time: float) -> void:
+func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon: String, walking: bool, attack_time: float, attack_duration: float, dashing: bool, airborne: bool, combo_style: int, hit_time: float, fighter_name: String) -> void:
 	# Animasi prosedural dengan fase ancang-ancang, ayunan, dan pemulihan.
 	var phase := animation_time * (13.0 if walking else 2.2)
 	var stride := sin(phase) if walking else 0.0
 	var idle_breath := sin(animation_time * 2.4)
-	var bob := absf(sin(phase * 2.0)) * 5.0 if walking else idle_breath * 1.8
+	var idle_phase := animation_time * 1.7 + (0.0 if fighter_name == "Swordman" else (1.1 if fighter_name == "Axeman" else 2.0))
+	var idle_sway := sin(idle_phase)
+	var is_idle := not walking and attack_time <= 0.0 and not dashing and not airborne and hit_time <= 0.0
+	var idle_strength := 1.0 if is_idle else 0.0
+	var bob := absf(sin(phase * 2.0)) * 5.0 if walking else idle_breath * 1.8 + absf(idle_sway) * 1.2 * idle_strength
 	var lean := 0.0
 	if dashing:
 		lean = -float(direction) * 13.0
@@ -240,10 +244,10 @@ func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon
 		var attack_progress := 1.0 - clampf(attack_time / maxf(attack_duration, 0.01), 0.0, 1.0)
 		# Sedikit mundur saat persiapan, condong ke depan saat ayunan.
 		lean = float(direction) * (sin(attack_progress * PI) * 12.0 - 5.0 * (1.0 - attack_progress))
-	var center := Vector2(x, floor_y - bob)
-	var head := center + Vector2(lean * 0.45, -112)
-	var shoulder := center + Vector2(lean, -86)
-	var hip := center + Vector2(lean * 0.35, -43)
+	var center := Vector2(x + idle_sway * 1.8 * idle_strength, floor_y - bob)
+	var head := center + Vector2(lean * 0.45 + idle_sway * 1.2 * idle_strength, -112 + idle_breath * 1.2 * idle_strength)
+	var shoulder := center + Vector2(lean + idle_sway * 2.2 * idle_strength, -86 + idle_breath * 1.8 * idle_strength)
+	var hip := center + Vector2(lean * 0.35 - idle_sway * 1.0 * idle_strength, -43)
 
 	if hit_time > 0.0:
 		var reaction := clampf(hit_time / 0.22, 0.0, 1.0)
@@ -260,10 +264,10 @@ func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon
 	var front_foot := front_knee + Vector2(13.0 * direction + leg_swing * 0.7, 21.0 - absf(stride) * 9.0)
 	var back_foot := back_knee + Vector2(-10.0 * direction - leg_swing * 0.7, 21.0 - absf(stride) * 9.0)
 
-	var front_elbow := shoulder + Vector2(18.0 * direction - stride * 9.0, 17.0)
-	var front_hand := front_elbow + Vector2(13.0 * direction - stride * 7.0, 13.0)
-	var back_elbow := shoulder + Vector2(-18.0 * direction + stride * 9.0, 15.0)
-	var back_hand := back_elbow + Vector2(-13.0 * direction + stride * 7.0, 14.0)
+	var front_elbow := shoulder + Vector2(18.0 * direction - stride * 9.0 + idle_sway * 2.0 * idle_strength, 17.0 + idle_breath * 2.0 * idle_strength)
+	var front_hand := front_elbow + Vector2(13.0 * direction - stride * 7.0 + idle_sway * 1.5 * idle_strength, 13.0 + idle_breath * 2.5 * idle_strength)
+	var back_elbow := shoulder + Vector2(-18.0 * direction + stride * 9.0 - idle_sway * 1.5 * idle_strength, 15.0)
+	var back_hand := back_elbow + Vector2(-13.0 * direction + stride * 7.0, 14.0 + idle_breath * 2.0 * idle_strength)
 
 	if attack_time > 0.0:
 		var progress := 1.0 - clampf(attack_time / maxf(attack_duration, 0.01), 0.0, 1.0)
@@ -329,13 +333,14 @@ func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon
 	draw_circle(front_hand, 4.0, tint)
 
 	# Senjata mengikuti tangan sepanjang animasi.
-	var weapon_tip := front_hand + Vector2(48.0 * direction, -12.0)
+	var idle_weapon_sway := idle_sway * idle_strength
+	var weapon_tip := front_hand + Vector2(48.0 * direction + idle_weapon_sway * 2.0, -12.0 + idle_breath * 2.0 * idle_strength)
 	if weapon == "SPEAR":
-		weapon_tip = front_hand + Vector2(78.0 * direction, -5.0)
+		weapon_tip = front_hand + Vector2(78.0 * direction + idle_weapon_sway * 4.0, -5.0 + idle_breath * 3.0 * idle_strength)
 		draw_line(front_hand, weapon_tip, Color("#f5d78e"), 5.0, true)
 		draw_line(weapon_tip, weapon_tip + Vector2(12.0 * direction, -2.0), Color("#dce7f2"), 3.0, true)
 	elif weapon == "AXE":
-		weapon_tip = front_hand + Vector2(36.0 * direction, -12.0)
+		weapon_tip = front_hand + Vector2(36.0 * direction + idle_weapon_sway * 3.0, -12.0 + idle_breath * 3.5 * idle_strength)
 		draw_line(front_hand, weapon_tip, Color("#b8c3d1"), 7.0, true)
 		draw_line(weapon_tip + Vector2(-4.0 * direction, 0), weapon_tip + Vector2(7.0 * direction, -17.0), Color("#b8c3d1"), 11.0, true)
 	else:
