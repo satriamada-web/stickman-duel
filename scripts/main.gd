@@ -39,6 +39,8 @@ var timer_label: Label
 var selection_label: Label
 var result_button: Button
 var skill_button: Button
+var player_hp_bar: ProgressBar
+var enemy_hp_bar: ProgressBar
 
 func _ready() -> void:
 	_build_ui()
@@ -205,6 +207,20 @@ func _build_ui() -> void:
 	_make_label(game_ui, "STICKMAN DUEL | TRAINING ARENA", Vector2(30, 18), 26, Color.WHITE)
 	player_hp_label = _make_label(game_ui, "PLAYER 1 | HP: 100", Vector2(30, 68), 22, Color("#55c7ff"))
 	enemy_hp_label = _make_label(game_ui, "OPPONENT | HP: 100", Vector2(930, 68), 22, Color("#ff687d"))
+	player_hp_bar = ProgressBar.new()
+	player_hp_bar.position = Vector2(30, 100)
+	player_hp_bar.size = Vector2(330, 22)
+	player_hp_bar.min_value = 0
+	player_hp_bar.max_value = 100
+	player_hp_bar.show_percentage = false
+	game_ui.add_child(player_hp_bar)
+	enemy_hp_bar = ProgressBar.new()
+	enemy_hp_bar.position = Vector2(920, 100)
+	enemy_hp_bar.size = Vector2(330, 22)
+	enemy_hp_bar.min_value = 0
+	enemy_hp_bar.max_value = 100
+	enemy_hp_bar.show_percentage = false
+	game_ui.add_child(enemy_hp_bar)
 	timer_label = _make_label(game_ui, "90", Vector2(610, 35), 34, Color.WHITE)
 	status_label = _make_label(game_ui, "Kalahkan lawan latihan!", Vector2(470, 105), 20, Color.WHITE)
 	_add_move_button(game_ui, "KIRI", Vector2(35, 590), Vector2(115, 80), -1)
@@ -330,7 +346,10 @@ func _use_skill() -> void:
 
 func _update_ui() -> void:
 	player_hp_label.text = "%s | HP: %d/%d" % [selected_character.to_upper(), player_hp, player_max_hp]
-	enemy_hp_label.text = "OPPONENT | HP: %d" % enemy_hp
+	enemy_hp_label.text = "OPPONENT | HP: %d/100" % enemy_hp
+	player_hp_bar.max_value = player_max_hp
+	player_hp_bar.value = player_hp
+	enemy_hp_bar.value = enemy_hp
 	timer_label.text = str(ceili(time_left))
 	if skill_button != null:
 		skill_button.text = "SKILL" if skill_cooldown <= 0.0 else "SKILL\n%d dtk" % ceili(skill_cooldown)
