@@ -421,6 +421,17 @@ func _draw_arena_background() -> void:
 		draw_line(Vector2(float(x), FLOOR_Y + 8), Vector2(640.0 + (float(x) - 640.0) * 1.35, 720.0), Color(0.55, 0.68, 0.82, 0.10), 1.0)
 	draw_line(Vector2(0, 710), Vector2(1280, 710), Color("#40536a"), 2.0)
 
+func _solve_knee_2d(hip_point: Vector2, foot_point: Vector2, upper_length: float, lower_length: float, bend_direction: float) -> Vector2:
+	var offset := foot_point - hip_point
+	var distance := maxf(offset.length(), 0.01)
+	var direction_to_foot := offset / distance
+	var safe_distance := clampf(distance, absf(upper_length - lower_length) + 0.01, upper_length + lower_length - 0.01)
+	var along := (upper_length * upper_length - lower_length * lower_length + safe_distance * safe_distance) / (2.0 * safe_distance)
+	var height := sqrt(maxf(0.0, upper_length * upper_length - along * along))
+	var perpendicular := Vector2(-direction_to_foot.y, direction_to_foot.x)
+	return hip_point + direction_to_foot * along + perpendicular * height * bend_direction
+
+
 func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon: String, walking: bool, attack_time: float, attack_duration: float, dashing: bool, airborne: bool, combo_style: int, hit_time: float, fighter_name: String, landing: float = 0.0, vertical_velocity: float = 0.0, takeoff: float = 0.0, blocking: bool = false, knockdown: float = 0.0) -> void:
 	# Rig prosedural: ritme langkah, pusat berat, dan pose serangan dibangun dari waktu.
 	var gait_rate := 18.0 if dashing else (11.5 if walking else 2.2)
@@ -554,6 +565,15 @@ func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon
 		front_hand = front_elbow + Vector2(-25.0 * direction, -12.0)
 		back_elbow = shoulder + Vector2(-25.0 * direction, 5.0)
 		back_hand = back_elbow + Vector2(-27.0 * direction, 8.0)
+
+	# Foot IK: telapak kaki tetap menyentuh lantai saat fase pijakan.
+	if not airborne and not dashing and knockdown <= 0.0:
+		var front_lift := maxf(0.0, cos(phase)) * (11.0 if walking else 0.0)
+		var back_lift := maxf(0.0, cos(phase + PI)) * (11.0 if walking else 0.0)
+		front_foot.y = floor_y - front_lift
+		back_foot.y = floor_y - back_lift
+		front_knee = _solve_knee_2d(hip, front_foot, 32.0, 27.0, -1.0 * direction)
+		back_knee = _solve_knee_2d(hip, back_foot, 32.0, 27.0, 1.0 * direction)
 
 	if knockdown > 0.0:
 		# Timer 1.15 dtk: rebah, tahan pose, lalu bangkit selama 0.35 dtk terakhir.
