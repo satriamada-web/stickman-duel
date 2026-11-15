@@ -69,6 +69,8 @@ var stamina_label: Label
 var sfx_players: Array[AudioStreamPlayer] = []
 var sfx_library: Dictionary = {}
 var sfx_next_player := 0
+var screen_shake_tween: Tween
+var hit_stop_id := 0
 
 func _ready() -> void:
 	_setup_audio()
@@ -221,6 +223,26 @@ func _process(delta: float) -> void:
 	_update_ui()
 	queue_redraw()
 
+
+func _shake_screen(strength: float) -> void:
+	if screen_shake_tween != null and screen_shake_tween.is_running():
+		screen_shake_tween.kill()
+	position = Vector2.ZERO
+	screen_shake_tween = create_tween()
+	for i in range(3):
+		var shake_offset := Vector2(randf_range(-strength, strength), randf_range(-strength * 0.55, strength * 0.55))
+		screen_shake_tween.tween_property(self, "position", shake_offset, 0.025)
+	screen_shake_tween.tween_property(self, "position", Vector2.ZERO, 0.045)
+
+
+func _trigger_hit_stop(duration: float) -> void:
+	hit_stop_id += 1
+	var current_id := hit_stop_id
+	Engine.time_scale = 0.08
+	await get_tree().create_timer(duration, true, false, true).timeout
+	if current_id == hit_stop_id:
+		Engine.time_scale = 1.0
+
 func _resolve_enemy_attack() -> void:
 	if absf(enemy_x - player_x) > 155.0:
 		status_label.text = "SERANGAN LAWAN MELESET!"
@@ -239,6 +261,8 @@ func _resolve_enemy_attack() -> void:
 	else:
 		player_stun_time = 0.10 if enemy_attack_heavy else 0.06
 	player_hit_flash = 0.28
+	_shake_screen(5.0 if is_blocking else 8.0)
+	_trigger_hit_stop(0.035 if is_blocking else 0.055)
 	_play_sfx("block" if is_blocking else ("heavy" if enemy_attack_heavy else "impact"))
 	impact_effect_time = 0.24
 	impact_effect_x = player_x
@@ -664,6 +688,8 @@ func _attack() -> void:
 		enemy_attack_windup = 0.0
 		enemy_attack_animation_time = 0.0
 		enemy_hit_flash = 0.18
+		_shake_screen(10.0 if combo_step == 3 else 6.0)
+		_trigger_hit_stop(0.065 if combo_step == 3 else 0.04)
 		_play_sfx("heavy" if combo_step == 3 else "impact")
 		impact_effect_time = 0.24
 		impact_effect_x = enemy_x
@@ -723,6 +749,8 @@ func _use_skill() -> void:
 		enemy_attack_animation_time = 0.0
 		enemy_knockback_velocity = (1.0 if enemy_x >= player_x else -1.0) * 520.0
 		enemy_hit_flash = 0.28
+		_shake_screen(9.0)
+		_trigger_hit_stop(0.06)
 		_play_sfx("impact")
 		impact_effect_time = 0.24
 		impact_effect_x = enemy_x
