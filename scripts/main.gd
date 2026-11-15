@@ -2,6 +2,9 @@ extends Node2D
 
 const FLOOR_Y := 570.0
 const MATCH_LENGTH := 90.0
+const MAX_STAMINA := 100.0
+const BLOCK_DRAIN_RATE := 28.0
+const STAMINA_REGEN_RATE := 18.0
 const CHARACTERS := {
 	"Swordman": {"hp": 100, "speed": 360.0, "damage": 15, "color": "#55c7ff", "weapon": "SWORD"},
 	"Axeman": {"hp": 110, "speed": 300.0, "damage": 22, "color": "#ffb45c", "weapon": "AXE"},
@@ -37,6 +40,8 @@ var impact_effect_x := 0.0
 var enemy_attack_cooldown := 0.0
 var move_direction := 0
 var is_blocking := false
+var stamina := MAX_STAMINA
+var block_broken_time := 0.0
 var match_over := false
 var game_started := false
 
@@ -54,6 +59,8 @@ var jump_button: Button
 var block_button: Button
 var player_hp_bar: ProgressBar
 var enemy_hp_bar: ProgressBar
+var stamina_bar: ProgressBar
+var stamina_label: Label
 
 func _ready() -> void:
 	_build_ui()
@@ -88,6 +95,16 @@ func _process(delta: float) -> void:
 	player_hit_flash = maxf(0.0, player_hit_flash - delta)
 	enemy_hit_flash = maxf(0.0, enemy_hit_flash - delta)
 	impact_effect_time = maxf(0.0, impact_effect_time - delta)
+	block_broken_time = maxf(0.0, block_broken_time - delta)
+	if is_blocking:
+		stamina = maxf(0.0, stamina - BLOCK_DRAIN_RATE * delta)
+		if stamina <= 0.0:
+			is_blocking = false
+			block_broken_time = 1.5
+			if block_button != null:
+				block_button.text = "LELAH!"
+	else:
+		stamina = minf(MAX_STAMINA, stamina + STAMINA_REGEN_RATE * delta)
 	time_left = maxf(0.0, time_left - delta)
 	attack_cooldown = maxf(0.0, attack_cooldown - delta)
 	combo_window = maxf(0.0, combo_window - delta)
@@ -128,6 +145,8 @@ func _process(delta: float) -> void:
 		enemy_attack_cooldown = 1.35
 		if dash_time <= 0.0 and jump_height < 45.0:
 			var incoming_damage := 2 if is_blocking else 8
+			if is_blocking and stamina <= 0.0:
+				incoming_damage = 8
 			player_hp = maxi(0, player_hp - incoming_damage)
 			if not is_blocking:
 				player_x = clampf(player_x - float(player_facing) * 95.0, 70.0, 1210.0)
@@ -335,13 +354,26 @@ func _build_ui() -> void:
 	dash_button = _add_button(game_ui, "DASH", Vector2(735, 590), Vector2(145, 85), _use_dash)
 	skill_button = _add_button(game_ui, "SKILL", Vector2(900, 590), Vector2(150, 85), _use_skill)
 	_add_button(game_ui, "SERANG", Vector2(1080, 575), Vector2(160, 100), _attack)
+	stamina_label = _make_label(game_ui, "STAMINA", Vector2(30, 135), 16, Color("#a8f0c6"))
+	stamina_bar = ProgressBar.new()
+	stamina_bar.position = Vector2(30, 158)
+	stamina_bar.size = Vector2(250, 14)
+	stamina_bar.min_value = 0
+	stamina_bar.max_value = MAX_STAMINA
+	stamina_bar.value = MAX_STAMINA
+	stamina_bar.show_percentage = false
+	game_ui.add_child(stamina_bar)
 	result_button = _add_button(game_ui, "KEMBALI KE MENU", Vector2(510, 470), Vector2(260, 70), _return_to_menu)
 	result_button.visible = false
 
 func _set_blocking(value: bool) -> void:
 	is_blocking = value and game_started and not match_over
 	if block_button != null:
-		block_button.text = "BERTAHAN" if is_blocking else "BLOCK"
+		block_button.text = "BERTAHAN" if is_blocking else ("LELAH!" if block_broken_time > 0.0 else "BLOCK")
+	if stamina_bar != null:
+		stamina_bar.value = stamina
+	if stamina_label != null:
+		stamina_label.text = "STAMINA: %d%%" % roundi(stamina)
 
 func _select_character(character_name: String) -> void:
 	selected_character = character_name
@@ -372,6 +404,8 @@ func _start_match() -> void:
 	enemy_attack_cooldown = 0.0
 	move_direction = 0
 	is_blocking = false
+	stamina = MAX_STAMINA
+	block_broken_time = 0.0
 	if block_button != null:
 		block_button.text = "BLOCK"
 	match_over = false
