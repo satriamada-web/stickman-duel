@@ -21,6 +21,8 @@ Game fighting 2D berbasis Godot 4 untuk Android.
 - Arena latihan melawan lawan AI sederhana.
 - Timer 90 detik dan sistem menang/kalah.
 - Kontrol sentuh dan keyboard.
+- Animasi prosedural berjalan, idle, dan serangan.
+- Efek kilat saat terkena serangan dan indikator benturan sederhana.
 
 ## Cara membuka dan mengembangkan proyek
 
