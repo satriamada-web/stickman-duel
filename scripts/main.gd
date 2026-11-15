@@ -617,6 +617,15 @@ func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon
 		back_knee = back_knee.lerp(prone_back_knee, getup_blend)
 		back_foot = back_foot.lerp(prone_back_foot, getup_blend)
 
+	# Secondary motion: kepala dan bahu sedikit terlambat mengikuti gerak utama.
+	if knockdown <= 0.0 and hit_time <= 0.0 and not blocking:
+		var body_follow := sin(phase - 0.65) * (2.2 if walking else 0.8)
+		if attack_time > 0.0:
+			var follow_progress := 1.0 - clampf(attack_time / maxf(attack_duration, 0.01), 0.0, 1.0)
+			body_follow += sin(follow_progress * PI) * 2.8
+		head += Vector2(-float(direction) * body_follow * 0.45, absf(body_follow) * 0.35)
+		shoulder += Vector2(-float(direction) * body_follow * 0.3, body_follow * 0.25)
+
 	# Active-ragdoll ringan: momentum benturan menggeser rig lalu mereda.
 	if ragdoll_blend > 0.0 and knockdown <= 0.0:
 		var recoil := ragdoll_blend
@@ -649,13 +658,19 @@ func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon
 	# Senjata mengikuti tangan sepanjang animasi.
 	var idle_weapon_sway := idle_sway * idle_strength
 	var aim_weapon_lift := aim_weight * 5.0 if not blocking and attack_time <= 0.0 and knockdown <= 0.0 else 0.0
-	var weapon_tip := front_hand + Vector2(48.0 * direction + idle_weapon_sway * 2.0, -12.0 - aim_weapon_lift + idle_breath * 2.0 * idle_strength)
+	# Senjata punya sedikit keterlambatan rotasi/posisi setelah gerak tangan.
+	var weapon_follow := 0.0
+	if attack_time > 0.0:
+		var weapon_progress := 1.0 - clampf(attack_time / maxf(attack_duration, 0.01), 0.0, 1.0)
+		weapon_follow = sin(weapon_progress * PI) * 8.0
+	var weapon_idle_lag := sin(animation_time * 8.5 - 0.9) * (2.8 if walking else 1.5 if idle_strength > 0.0 else 0.0)
+	var weapon_tip := front_hand + Vector2(48.0 * direction + idle_weapon_sway * 2.0 + weapon_idle_lag * direction, -12.0 - aim_weapon_lift + idle_breath * 2.0 * idle_strength + weapon_follow)
 	if weapon == "SPEAR":
-		weapon_tip = front_hand + Vector2(78.0 * direction + idle_weapon_sway * 4.0, -5.0 + idle_breath * 3.0 * idle_strength)
+		weapon_tip = front_hand + Vector2(78.0 * direction + idle_weapon_sway * 4.0 + weapon_idle_lag * direction, -5.0 + idle_breath * 3.0 * idle_strength + weapon_follow * 0.65)
 		draw_line(front_hand, weapon_tip, Color("#f5d78e"), 5.0, true)
 		draw_line(weapon_tip, weapon_tip + Vector2(12.0 * direction, -2.0), Color("#dce7f2"), 3.0, true)
 	elif weapon == "AXE":
-		weapon_tip = front_hand + Vector2(36.0 * direction + idle_weapon_sway * 3.0, -12.0 + idle_breath * 3.5 * idle_strength)
+		weapon_tip = front_hand + Vector2(36.0 * direction + idle_weapon_sway * 3.0 + weapon_idle_lag * direction, -12.0 + idle_breath * 3.5 * idle_strength + weapon_follow * 1.25)
 		draw_line(front_hand, weapon_tip, Color("#b8c3d1"), 7.0, true)
 		draw_line(weapon_tip + Vector2(-4.0 * direction, 0), weapon_tip + Vector2(7.0 * direction, -17.0), Color("#b8c3d1"), 11.0, true)
 	else:
