@@ -71,13 +71,13 @@ func _input(event: InputEvent) -> void:
 			_attack()
 		elif event.keycode == KEY_W or event.keycode == KEY_UP:
 			_jump()
+		elif event.keycode == KEY_SHIFT:
+			is_blocking = true
 	elif event is InputEventKey and not event.pressed:
 		if event.keycode in [KEY_A, KEY_D, KEY_LEFT, KEY_RIGHT]:
 			move_direction = 0
-		if event.keycode == KEY_SHIFT:
+		elif event.keycode == KEY_SHIFT:
 			is_blocking = false
-	elif event is InputEventKey and event.pressed and event.keycode == KEY_SHIFT:
-		is_blocking = true
 
 func _process(delta: float) -> void:
 	if not game_started or match_over:
@@ -323,8 +323,14 @@ func _build_ui() -> void:
 	_add_move_button(game_ui, "KIRI", Vector2(35, 590), Vector2(115, 80), -1)
 	_add_move_button(game_ui, "KANAN", Vector2(165, 590), Vector2(115, 80), 1)
 	_add_button(game_ui, "BERHENTI", Vector2(295, 590), Vector2(115, 80), func(): move_direction = 0)
-	block_button = _add_button(game_ui, "BLOCK", Vector2(585, 590), Vector2(125, 85), func(): _set_blocking(true))
+	block_button = Button.new()
+	block_button.text = "BLOCK"
+	block_button.position = Vector2(585, 590)
+	block_button.size = Vector2(125, 85)
+	block_button.add_theme_font_size_override("font_size", 20)
+	block_button.button_down.connect(func(): _set_blocking(true))
 	block_button.button_up.connect(func(): _set_blocking(false))
+	game_ui.add_child(block_button)
 	jump_button = _add_button(game_ui, "LOMPAT", Vector2(445, 590), Vector2(125, 85), _jump)
 	dash_button = _add_button(game_ui, "DASH", Vector2(735, 590), Vector2(145, 85), _use_dash)
 	skill_button = _add_button(game_ui, "SKILL", Vector2(900, 590), Vector2(150, 85), _use_skill)
