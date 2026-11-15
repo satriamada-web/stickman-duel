@@ -856,6 +856,29 @@ func _build_ui() -> void:
 	menu_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	menu_ui.add_child(menu_art)
 
+	# Dark glass panel creates a deliberate readable zone over the artwork.
+	var menu_panel := Panel.new()
+	_set_ui_rect(menu_panel, 0.035, 0.045, 0.535, 0.955)
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color = Color(0.018, 0.035, 0.085, 0.78)
+	panel_style.border_color = Color("#3a9be0")
+	panel_style.set_border_width_all(2)
+	panel_style.corner_radius_top_left = 22
+	panel_style.corner_radius_top_right = 22
+	panel_style.corner_radius_bottom_left = 22
+	panel_style.corner_radius_bottom_right = 22
+	panel_style.shadow_color = Color(0.0, 0.45, 0.9, 0.25)
+	panel_style.shadow_size = 18
+	menu_panel.add_theme_stylebox_override("panel", panel_style)
+	menu_ui.add_child(menu_panel)
+	menu_ui.move_child(menu_panel, 1)
+
+	var accent_line := ColorRect.new()
+	accent_line.color = Color("#64d8ff")
+	accent_line.position = Vector2(78, 42)
+	accent_line.size = Vector2(105, 4)
+	menu_ui.add_child(accent_line)
+
 	# Header dan identitas visual menu utama.
 	var eyebrow := _make_label(menu_ui, "THE ULTIMATE STICK FIGHTING ARENA", Vector2(76, 54), 15, Color("#72d9ff"))
 	eyebrow.add_theme_color_override("font_shadow_color", Color("#1674b9"))
@@ -889,6 +912,23 @@ func _build_ui() -> void:
 		var left := 0.06 + float(i) * 0.205
 		_set_ui_rect(card, left, 0.59, left + 0.19, 0.77)
 		_style_game_button(card, data["color"], 16)
+		var card_style := StyleBoxFlat.new()
+		card_style.bg_color = Color(0.025, 0.075, 0.15, 0.94)
+		card_style.border_color = data["color"].lightened(0.45)
+		card_style.set_border_width_all(2)
+		card_style.corner_radius_top_left = 13
+		card_style.corner_radius_top_right = 13
+		card_style.corner_radius_bottom_left = 13
+		card_style.corner_radius_bottom_right = 13
+		card_style.shadow_color = Color(data["color"].r, data["color"].g, data["color"].b, 0.35)
+		card_style.shadow_size = 9
+		card.add_theme_stylebox_override("normal", card_style)
+		var card_hover := card_style.duplicate() as StyleBoxFlat
+		card_hover.bg_color = Color(0.06, 0.16, 0.27, 0.98)
+		card_hover.set_border_width_all(3)
+		card.add_theme_stylebox_override("hover", card_hover)
+		card.add_theme_stylebox_override("pressed", card_hover)
+		card.add_theme_color_override("font_color", Color("#f3f8ff"))
 		character_buttons[str(data["name"])] = card
 
 	selection_label = _make_label(menu_ui, "SELECTED: SWORDMAN", Vector2(78, 572), 17, Color("#70d9ff"))
