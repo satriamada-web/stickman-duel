@@ -16,6 +16,8 @@ var enemy_hp := 100
 var player_max_hp := 100
 var time_left := MATCH_LENGTH
 var attack_cooldown := 0.0
+var attack_animation_time := 0.0
+var animation_time := 0.0
 var enemy_attack_cooldown := 0.0
 var move_direction := 0
 var match_over := false
@@ -51,6 +53,8 @@ func _input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if not game_started or match_over:
 		return
+	animation_time += delta
+	attack_animation_time = maxf(0.0, attack_animation_time - delta)
 	time_left = maxf(0.0, time_left - delta)
 	attack_cooldown = maxf(0.0, attack_cooldown - delta)
 	enemy_attack_cooldown = maxf(0.0, enemy_attack_cooldown - delta)
@@ -78,27 +82,47 @@ func _draw() -> void:
 	for i in range(0, 1280, 80):
 		draw_line(Vector2(i, FLOOR_Y + 35), Vector2(i + 35, FLOOR_Y + 35), Color("#40536a"), 2.0)
 	var player_stats: Dictionary = CHARACTERS[selected_character]
-	_draw_fighter(player_x, FLOOR_Y, Color(player_stats["color"]), 1, str(player_stats["weapon"]))
-	_draw_fighter(enemy_x, FLOOR_Y, Color("#ff687d"), -1, "AXE")
+	_draw_fighter(player_x, FLOOR_Y, Color(player_stats["color"]), 1, str(player_stats["weapon"]), move_direction != 0, attack_animation_time > 0.0)
+	_draw_fighter(enemy_x, FLOOR_Y, Color("#ff687d"), -1, "AXE", absf(enemy_x - player_x) > 125.0, false)
 
-func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon: String) -> void:
-	var center := Vector2(x, floor_y)
+func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon: String, walking: bool, attacking: bool) -> void:
+	# Animasi prosedural sederhana: badan naik-turun dan tangan/kaki mengayun.
+	var phase := animation_time * (9.0 if walking else 2.2)
+	var stride := sin(phase) * 15.0 if walking else 0.0
+	var bob := absf(sin(phase * 2.0)) * 4.0 if walking else sin(phase) * 1.5
+	var center := Vector2(x, floor_y - bob)
 	var head := center + Vector2(0, -112)
 	var body_top := center + Vector2(0, -88)
 	var body_bottom := center + Vector2(0, -42)
-	var arm_end := center + Vector2(38 * direction, -68)
+	var front_arm := center + Vector2(38 * direction, -68 + (stride * 0.45 if walking else 0.0))
+	var back_arm := center + Vector2(-30 * direction, -65 - (stride * 0.45 if walking else 0.0))
+	var front_leg := center + Vector2(25 * direction + stride, 0)
+	var back_leg := center + Vector2(-22 * direction - stride, 0)
+
+	if attacking:
+		front_arm = center + Vector2(58 * direction, -83)
+		back_arm = center + Vector2(-25 * direction, -58)
+
 	draw_circle(head, 17, tint)
 	draw_line(body_top, body_bottom, tint, 8.0, true)
-	draw_line(body_top + Vector2(0, 8), arm_end, tint, 7.0, true)
-	draw_line(body_bottom, center + Vector2(-22, 0), tint, 7.0, true)
-	draw_line(body_bottom, center + Vector2(25, 0), tint, 7.0, true)
+	draw_line(body_top + Vector2(0, 8), front_arm, tint, 7.0, true)
+	draw_line(body_top + Vector2(0, 8), back_arm, tint, 6.0, true)
+	draw_line(body_bottom, front_leg, tint, 7.0, true)
+	draw_line(body_bottom, back_leg, tint, 7.0, true)
+
+	var weapon_tip := front_arm + Vector2(48 * direction, -12)
 	if weapon == "SPEAR":
-		draw_line(arm_end, arm_end + Vector2(78 * direction, -5), Color("#f5d78e"), 5.0, true)
+		weapon_tip = front_arm + Vector2(78 * direction, -5)
+		draw_line(front_arm, weapon_tip, Color("#f5d78e"), 5.0, true)
 	elif weapon == "AXE":
-		draw_line(arm_end, arm_end + Vector2(36 * direction, -12), Color("#b8c3d1"), 7.0, true)
-		draw_line(arm_end + Vector2(32 * direction, -12), arm_end + Vector2(42 * direction, -29), Color("#b8c3d1"), 11.0, true)
+		weapon_tip = front_arm + Vector2(36 * direction, -12)
+		draw_line(front_arm, weapon_tip, Color("#b8c3d1"), 7.0, true)
+		draw_line(weapon_tip + Vector2(-4 * direction, 0), weapon_tip + Vector2(7 * direction, -17), Color("#b8c3d1"), 11.0, true)
 	else:
-		draw_line(arm_end, arm_end + Vector2(48 * direction, -12), Color("#f5d78e"), 6.0, true)
+		draw_line(front_arm, weapon_tip, Color("#f5d78e"), 6.0, true)
+
+	if attacking:
+		draw_arc(center + Vector2(35 * direction, -78), 52.0, -0.9, 0.9, 18, Color("#fff0a6"), 5.0)
 
 func _build_ui() -> void:
 	var layer := CanvasLayer.new()
@@ -201,6 +225,7 @@ func _attack() -> void:
 	if not game_started or match_over or attack_cooldown > 0.0:
 		return
 	attack_cooldown = 0.65
+	attack_animation_time = 0.22
 	var stats: Dictionary = CHARACTERS[selected_character]
 	var attack_range := 190.0 if selected_character == "Spearman" else 155.0
 	if absf(enemy_x - player_x) <= attack_range:
