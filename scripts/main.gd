@@ -79,12 +79,12 @@ func _input(event: InputEvent) -> void:
 		elif event.keycode == KEY_W or event.keycode == KEY_UP:
 			_jump()
 		elif event.keycode == KEY_SHIFT:
-			is_blocking = true
+			_set_blocking(true)
 	elif event is InputEventKey and not event.pressed:
 		if event.keycode in [KEY_A, KEY_D, KEY_LEFT, KEY_RIGHT]:
 			move_direction = 0
 		elif event.keycode == KEY_SHIFT:
-			is_blocking = false
+			_set_blocking(false)
 
 func _process(delta: float) -> void:
 	if not game_started or match_over:
@@ -367,13 +367,11 @@ func _build_ui() -> void:
 	result_button.visible = false
 
 func _set_blocking(value: bool) -> void:
-	is_blocking = value and game_started and not match_over
+	is_blocking = value and game_started and not match_over and stamina > 0.0 and block_broken_time <= 0.0
 	if block_button != null:
 		block_button.text = "BERTAHAN" if is_blocking else ("LELAH!" if block_broken_time > 0.0 else "BLOCK")
-	if stamina_bar != null:
-		stamina_bar.value = stamina
-	if stamina_label != null:
-		stamina_label.text = "STAMINA: %d%%" % roundi(stamina)
+	queue_redraw()
+
 
 func _select_character(character_name: String) -> void:
 	selected_character = character_name
@@ -561,6 +559,12 @@ func _update_ui() -> void:
 		skill_button.text = "SKILL" if skill_cooldown <= 0.0 else "SKILL\n%d dtk" % ceili(skill_cooldown)
 	if dash_button != null:
 		dash_button.text = "DASH" if dash_cooldown <= 0.0 else "DASH\n%d dtk" % ceili(dash_cooldown)
+	if stamina_bar != null:
+		stamina_bar.value = stamina
+	if stamina_label != null:
+		stamina_label.text = "STAMINA: %d%%" % roundi(stamina)
+	if block_button != null and not is_blocking:
+		block_button.text = "LELAH!" if block_broken_time > 0.0 else "BLOCK"
 
 func _finish_match() -> void:
 	match_over = true
