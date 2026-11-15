@@ -36,6 +36,7 @@ var impact_effect_time := 0.0
 var impact_effect_x := 0.0
 var enemy_attack_cooldown := 0.0
 var move_direction := 0
+var is_blocking := false
 var match_over := false
 var game_started := false
 
@@ -50,6 +51,7 @@ var result_button: Button
 var skill_button: Button
 var dash_button: Button
 var jump_button: Button
+var block_button: Button
 var player_hp_bar: ProgressBar
 var enemy_hp_bar: ProgressBar
 
@@ -72,6 +74,10 @@ func _input(event: InputEvent) -> void:
 	elif event is InputEventKey and not event.pressed:
 		if event.keycode in [KEY_A, KEY_D, KEY_LEFT, KEY_RIGHT]:
 			move_direction = 0
+		if event.keycode == KEY_SHIFT:
+			is_blocking = false
+	elif event is InputEventKey and event.pressed and event.keycode == KEY_SHIFT:
+		is_blocking = true
 
 func _process(delta: float) -> void:
 	if not game_started or match_over:
@@ -113,18 +119,22 @@ func _process(delta: float) -> void:
 		enemy_knockback_velocity = move_toward(enemy_knockback_velocity, 0.0, 1250.0 * delta)
 	else:
 		enemy_knockback_velocity = 0.0
-		var distance := absf(enemy_x - player_x)
-		if distance > 125.0:
-			enemy_x = move_toward(enemy_x, player_x, 145.0 * delta)
-	elif enemy_attack_cooldown <= 0.0:
+
+	var distance := absf(enemy_x - player_x)
+	if distance > 125.0 and absf(enemy_knockback_velocity) <= 8.0:
+		enemy_x = move_toward(enemy_x, player_x, 145.0 * delta)
+	elif distance <= 125.0 and enemy_attack_cooldown <= 0.0 and absf(enemy_knockback_velocity) <= 8.0:
 		enemy_attack_animation_time = 0.24
 		enemy_attack_cooldown = 1.35
 		if dash_time <= 0.0 and jump_height < 45.0:
-			player_hp = maxi(0, player_hp - 8)
-			player_x = clampf(player_x - float(player_facing) * 95.0, 70.0, 1210.0)
+			var incoming_damage := 2 if is_blocking else 8
+			player_hp = maxi(0, player_hp - incoming_damage)
+			if not is_blocking:
+				player_x = clampf(player_x - float(player_facing) * 95.0, 70.0, 1210.0)
 			player_hit_flash = 0.22
 			impact_effect_time = 0.24
 			impact_effect_x = player_x
+			status_label.text = "BLOCK BERHASIL! Damage hanya %d." % incoming_damage if is_blocking else "KAMU TERKENA SERANGAN!"
 		else:
 			status_label.text = "BERHASIL MENGHINDAR!"
 
@@ -313,12 +323,19 @@ func _build_ui() -> void:
 	_add_move_button(game_ui, "KIRI", Vector2(35, 590), Vector2(115, 80), -1)
 	_add_move_button(game_ui, "KANAN", Vector2(165, 590), Vector2(115, 80), 1)
 	_add_button(game_ui, "BERHENTI", Vector2(295, 590), Vector2(115, 80), func(): move_direction = 0)
+	block_button = _add_button(game_ui, "BLOCK", Vector2(585, 590), Vector2(125, 85), func(): _set_blocking(true))
+	block_button.button_up.connect(func(): _set_blocking(false))
 	jump_button = _add_button(game_ui, "LOMPAT", Vector2(445, 590), Vector2(125, 85), _jump)
 	dash_button = _add_button(game_ui, "DASH", Vector2(735, 590), Vector2(145, 85), _use_dash)
 	skill_button = _add_button(game_ui, "SKILL", Vector2(900, 590), Vector2(150, 85), _use_skill)
 	_add_button(game_ui, "SERANG", Vector2(1080, 575), Vector2(160, 100), _attack)
 	result_button = _add_button(game_ui, "KEMBALI KE MENU", Vector2(510, 470), Vector2(260, 70), _return_to_menu)
 	result_button.visible = false
+
+func _set_blocking(value: bool) -> void:
+	is_blocking = value and game_started and not match_over
+	if block_button != null:
+		block_button.text = "BERTAHAN" if is_blocking else "BLOCK"
 
 func _select_character(character_name: String) -> void:
 	selected_character = character_name
@@ -348,6 +365,9 @@ func _start_match() -> void:
 	player_facing = 1
 	enemy_attack_cooldown = 0.0
 	move_direction = 0
+	is_blocking = false
+	if block_button != null:
+		block_button.text = "BLOCK"
 	match_over = false
 	game_started = true
 	menu_ui.visible = false
