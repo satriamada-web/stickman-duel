@@ -278,11 +278,7 @@ func _resolve_enemy_attack() -> void:
 func _draw() -> void:
 	if not game_started:
 		return
-	draw_rect(Rect2(0, 0, 1280, 720), Color("#172033"))
-	draw_rect(Rect2(0, FLOOR_Y, 1280, 150), Color("#26364b"))
-	draw_line(Vector2(0, FLOOR_Y), Vector2(1280, FLOOR_Y), Color("#8da3bd"), 4.0)
-	for i in range(0, 1280, 80):
-		draw_line(Vector2(i, FLOOR_Y + 35), Vector2(i + 35, FLOOR_Y + 35), Color("#40536a"), 2.0)
+	_draw_arena_background()
 	var player_stats: Dictionary = CHARACTERS[selected_character]
 	var player_tint := Color("#ffffff") if player_hit_flash > 0.0 else Color(player_stats["color"])
 	var enemy_tint := Color("#ffffff") if enemy_hit_flash > 0.0 else Color("#ff687d")
@@ -313,6 +309,61 @@ func _draw() -> void:
 			var spark_distance := burst_radius + 8.0 + impact_progress * 24.0
 			var spark_position := Vector2(impact_effect_x, impact_y) + Vector2(cos(spark_angle), sin(spark_angle)) * spark_distance
 			draw_circle(spark_position, (3.5 if impact_effect_heavy else 2.5) * burst_alpha, Color.WHITE)
+
+
+func _draw_arena_background() -> void:
+	# Langit berlapis dengan cahaya arena yang bergerak perlahan.
+	draw_rect(Rect2(0, 0, 1280, FLOOR_Y), Color("#111b31"))
+	draw_rect(Rect2(0, 0, 1280, 210), Color("#1b2945"))
+	draw_rect(Rect2(0, 210, 1280, 180), Color("#253451"))
+	draw_rect(Rect2(0, 390, 1280, 180), Color("#303d53"))
+	draw_circle(Vector2(640, 175), 76.0, Color(0.40, 0.67, 0.91, 0.10))
+	draw_circle(Vector2(640, 175), 48.0, Color("#a9d8f2"))
+	draw_circle(Vector2(640, 175), 39.0, Color("#d4eaff"))
+
+	var beam_shift := sin(animation_time * 0.42) * 34.0
+	var beam_color := Color(0.35, 0.72, 1.0, 0.055)
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(105, 0), Vector2(210, 0), Vector2(440 + beam_shift, FLOOR_Y),
+		Vector2(285 + beam_shift, FLOOR_Y)
+	]), beam_color)
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(1090, 0), Vector2(1190, 0), Vector2(995 + beam_shift, FLOOR_Y),
+		Vector2(850 + beam_shift, FLOOR_Y)
+	]), Color(0.95, 0.57, 0.30, 0.045))
+
+	# Siluet gedung dan tribun di kejauhan.
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(0, 430), Vector2(110, 350), Vector2(215, 420),
+		Vector2(330, 330), Vector2(455, 425), Vector2(570, 365),
+		Vector2(700, 430), Vector2(830, 345), Vector2(960, 425),
+		Vector2(1090, 355), Vector2(1280, 430), Vector2(1280, FLOOR_Y),
+		Vector2(0, FLOOR_Y)
+	]), Color("#202d43"))
+	draw_rect(Rect2(0, 438, 1280, 132), Color("#18263b"))
+	for x in range(20, 1280, 42):
+		var crowd_height := 8.0 + float((x * 7) % 17)
+		draw_circle(Vector2(float(x), 493.0 - crowd_height), 5.0, Color("#52647c"))
+		draw_line(Vector2(float(x), 500.0 - crowd_height), Vector2(float(x), 520.0), Color("#52647c"), 3.0)
+
+	# Lampu sorot dan papan arena.
+	for lamp_x in [85.0, 1195.0]:
+		draw_rect(Rect2(lamp_x - 5.0, 265.0, 10.0, 165.0), Color("#64748b"))
+		draw_rect(Rect2(lamp_x - 27.0, 255.0, 54.0, 18.0), Color("#a9c5df"))
+		draw_circle(Vector2(lamp_x, 264.0), 18.0, Color(0.70, 0.88, 1.0, 0.13))
+	draw_rect(Rect2(470, 315, 340, 54), Color("#111d30"))
+	draw_rect(Rect2(476, 321, 328, 42), Color("#344b68"))
+	draw_string(ThemeDB.fallback_font, Vector2(535, 349), "TRAINING ARENA", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color("#d7eaff"))
+
+	# Lantai arena dengan garis perspektif dan garis batas.
+	draw_rect(Rect2(0, FLOOR_Y, 1280, 150), Color("#26364b"))
+	draw_rect(Rect2(0, FLOOR_Y, 1280, 8), Color("#8da3bd"))
+	draw_line(Vector2(0, FLOOR_Y + 4), Vector2(1280, FLOOR_Y + 4), Color("#b5d5ef"), 2.0)
+	for i in range(0, 1280, 80):
+		draw_line(Vector2(i, FLOOR_Y + 35), Vector2(i + 35, FLOOR_Y + 35), Color("#40536a"), 2.0)
+	for x in range(0, 1281, 160):
+		draw_line(Vector2(float(x), FLOOR_Y + 8), Vector2(640.0 + (float(x) - 640.0) * 1.35, 720.0), Color(0.55, 0.68, 0.82, 0.10), 1.0)
+	draw_line(Vector2(0, 710), Vector2(1280, 710), Color("#40536a"), 2.0)
 
 func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon: String, walking: bool, attack_time: float, attack_duration: float, dashing: bool, airborne: bool, combo_style: int, hit_time: float, fighter_name: String) -> void:
 	# Animasi prosedural dengan fase ancang-ancang, ayunan, dan pemulihan.
