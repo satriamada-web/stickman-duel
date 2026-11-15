@@ -262,9 +262,10 @@ func _resolve_enemy_attack() -> void:
 		status_label.text = "BERHASIL MENGHINDAR!"
 		return
 	var base_damage := 14 if enemy_attack_heavy else 8
+	var incoming_damage := base_damage
 	var perfect_parry := is_blocking and block_hold_time <= 0.18 and stamina > 0.0
 	if perfect_parry:
-		incoming_damage := 0
+		incoming_damage = 0
 		enemy_stun_time = 0.85
 		enemy_attack_cooldown = maxf(enemy_attack_cooldown, 1.0)
 		counter_window = 1.1
@@ -280,7 +281,7 @@ func _resolve_enemy_attack() -> void:
 		_update_ui()
 		queue_redraw()
 		return
-	var incoming_damage := (4 if enemy_attack_heavy else 2) if is_blocking else base_damage
+	incoming_damage = (4 if enemy_attack_heavy else 2) if is_blocking else base_damage
 	if is_blocking and stamina <= 0.0:
 		incoming_damage = base_damage
 	player_hp = maxi(0, player_hp - incoming_damage)
