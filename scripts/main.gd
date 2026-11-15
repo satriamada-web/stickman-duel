@@ -102,43 +102,66 @@ func _draw() -> void:
 		draw_line(Vector2(impact_effect_x - 13, impact_y + 13), Vector2(impact_effect_x + 13, impact_y - 13), Color("#ffe28a"), 5.0)
 
 func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon: String, walking: bool, attacking: bool) -> void:
-	# Animasi prosedural sederhana: badan naik-turun dan tangan/kaki mengayun.
-	var phase := animation_time * (9.0 if walking else 2.2)
-	var stride := sin(phase) * 15.0 if walking else 0.0
-	var bob := absf(sin(phase * 2.0)) * 4.0 if walking else sin(phase) * 1.5
+	# Gerakan sendi: pinggul, lutut, bahu, siku, dan tangan dihitung setiap frame.
+	var phase := animation_time * 10.0
+	var swing := sin(phase) if walking else sin(animation_time * 2.0) * 0.06
+	var leg_swing := swing * (0.62 if walking else 0.08)
+	var bob := absf(sin(phase * 2.0)) * 4.0 if walking else sin(animation_time * 2.0) * 1.2
 	var center := Vector2(x, floor_y - bob)
 	var head := center + Vector2(0, -112)
-	var body_top := center + Vector2(0, -88)
-	var body_bottom := center + Vector2(0, -42)
-	var front_arm := center + Vector2(38 * direction, -68 + (stride * 0.45 if walking else 0.0))
-	var back_arm := center + Vector2(-30 * direction, -65 - (stride * 0.45 if walking else 0.0))
-	var front_leg := center + Vector2(25 * direction + stride, 0)
-	var back_leg := center + Vector2(-22 * direction - stride, 0)
+	var shoulder := center + Vector2(0, -86)
+	var hip := center + Vector2(0, -43)
+
+	# Kaki dibuat dua ruas agar lutut terlihat menekuk saat melangkah.
+	var front_knee := hip + Vector2(14 * direction + leg_swing * 20.0, 24.0 + absf(leg_swing) * 5.0)
+	var back_knee := hip + Vector2(-12 * direction - leg_swing * 20.0, 25.0 + absf(leg_swing) * 5.0)
+	var front_foot := front_knee + Vector2(13 * direction + leg_swing * 25.0, 21.0 - absf(leg_swing) * 12.0)
+	var back_foot := back_knee + Vector2(-10 * direction - leg_swing * 25.0, 21.0 - absf(leg_swing) * 12.0)
+
+	# Tangan mengayun berlawanan dengan kaki.
+	var arm_swing := -swing * 17.0
+	var front_elbow := shoulder + Vector2(18 * direction + arm_swing, 17.0)
+	var front_hand := front_elbow + Vector2(13 * direction + arm_swing * 0.65, 13.0)
+	var back_elbow := shoulder + Vector2(-18 * direction - arm_swing, 15.0)
+	var back_hand := back_elbow + Vector2(-13 * direction - arm_swing * 0.65, 14.0)
 
 	if attacking:
-		front_arm = center + Vector2(58 * direction, -83)
-		back_arm = center + Vector2(-25 * direction, -58)
+		var attack_progress := 1.0 - clampf(attack_animation_time / 0.22, 0.0, 1.0)
+		var attack_reach := sin(attack_progress * PI) * 52.0
+		front_elbow = shoulder + Vector2((25.0 + attack_reach * 0.55) * direction, -5.0)
+		front_hand = shoulder + Vector2((62.0 + attack_reach) * direction, -18.0)
+		back_elbow = shoulder + Vector2(-22.0 * direction, 18.0)
+		back_hand = back_elbow + Vector2(-12.0 * direction, 12.0)
 
-	draw_circle(head, 17, tint)
-	draw_line(body_top, body_bottom, tint, 8.0, true)
-	draw_line(body_top + Vector2(0, 8), front_arm, tint, 7.0, true)
-	draw_line(body_top + Vector2(0, 8), back_arm, tint, 6.0, true)
-	draw_line(body_bottom, front_leg, tint, 7.0, true)
-	draw_line(body_bottom, back_leg, tint, 7.0, true)
+	draw_circle(head, 17.0, tint)
+	draw_line(shoulder, hip, tint, 8.0, true)
+	draw_line(hip, back_knee, tint, 7.0, true)
+	draw_line(back_knee, back_foot, tint, 7.0, true)
+	draw_line(hip, front_knee, tint, 7.0, true)
+	draw_line(front_knee, front_foot, tint, 7.0, true)
+	draw_circle(back_knee, 3.5, tint)
+	draw_circle(front_knee, 3.5, tint)
+	draw_line(shoulder, back_elbow, tint, 6.0, true)
+	draw_line(back_elbow, back_hand, tint, 6.0, true)
+	draw_line(shoulder, front_elbow, tint, 7.0, true)
+	draw_line(front_elbow, front_hand, tint, 7.0, true)
+	draw_circle(front_elbow, 3.5, tint)
+	draw_circle(front_hand, 4.0, tint)
 
-	var weapon_tip := front_arm + Vector2(48 * direction, -12)
+	# Senjata mengikuti posisi tangan karakter.
+	var weapon_tip := front_hand + Vector2(48.0 * direction, -12.0)
 	if weapon == "SPEAR":
-		weapon_tip = front_arm + Vector2(78 * direction, -5)
-		draw_line(front_arm, weapon_tip, Color("#f5d78e"), 5.0, true)
+		weapon_tip = front_hand + Vector2(78.0 * direction, -5.0)
+		draw_line(front_hand, weapon_tip, Color("#f5d78e"), 5.0, true)
 	elif weapon == "AXE":
-		weapon_tip = front_arm + Vector2(36 * direction, -12)
-		draw_line(front_arm, weapon_tip, Color("#b8c3d1"), 7.0, true)
-		draw_line(weapon_tip + Vector2(-4 * direction, 0), weapon_tip + Vector2(7 * direction, -17), Color("#b8c3d1"), 11.0, true)
+		weapon_tip = front_hand + Vector2(36.0 * direction, -12.0)
+		draw_line(front_hand, weapon_tip, Color("#b8c3d1"), 7.0, true)
+		draw_line(weapon_tip + Vector2(-4.0 * direction, 0), weapon_tip + Vector2(7.0 * direction, -17.0), Color("#b8c3d1"), 11.0, true)
 	else:
-		draw_line(front_arm, weapon_tip, Color("#f5d78e"), 6.0, true)
+		draw_line(front_hand, weapon_tip, Color("#f5d78e"), 6.0, true)
 
 	if attacking:
-		draw_arc(center + Vector2(35 * direction, -78), 52.0, -0.9, 0.9, 18, Color("#fff0a6"), 5.0)
+		draw_arc(center + Vector2(35.0 * direction, -78.0), 52.0, -0.9, 0.9, 18, Color("#fff0a6"), 5.0)
 
 func _build_ui() -> void:
 	var layer := CanvasLayer.new()
