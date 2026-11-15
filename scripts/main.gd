@@ -274,6 +274,7 @@ func _resolve_enemy_attack() -> void:
 	var perfect_parry := is_blocking and block_hold_time <= 0.18 and stamina > 0.0
 	if perfect_parry:
 		incoming_damage = 0
+		player_stun_time = 0.12
 		enemy_stun_time = 0.85
 		enemy_attack_cooldown = maxf(enemy_attack_cooldown, 1.0)
 		counter_window = 1.1
@@ -325,7 +326,7 @@ func _draw() -> void:
 			var trail_offset := float(trail_index) * 17.0 * float(player_facing)
 			draw_line(Vector2(player_x - trail_offset, FLOOR_Y - 75.0), Vector2(player_x - trail_offset - 24.0 * float(player_facing), FLOOR_Y - 75.0), trail_color, 5.0 - float(trail_index) * 0.7, true)
 	draw_circle(Vector2(player_x, FLOOR_Y - 3.0), 23.0 - minf(jump_height * 0.035, 12.0), Color(0.02, 0.04, 0.08, 0.28))
-	_draw_fighter(player_x, FLOOR_Y - jump_height, player_tint, player_facing, str(player_stats["weapon"]), move_direction != 0 or dash_time > 0.0, maxf(attack_animation_time, skill_animation_time), 0.42 if skill_animation_time > attack_animation_time else attack_animation_duration, dash_time > 0.0, jump_height > 0.0, combo_step, player_hit_flash, selected_character, landing_time, jump_velocity, jump_takeoff_time)
+	_draw_fighter(player_x, FLOOR_Y - jump_height, player_tint, player_facing, str(player_stats["weapon"]), move_direction != 0 or dash_time > 0.0, maxf(attack_animation_time, skill_animation_time), 0.42 if skill_animation_time > attack_animation_time else attack_animation_duration, dash_time > 0.0, jump_height > 0.0, combo_step, player_hit_flash, selected_character, landing_time, jump_velocity, jump_takeoff_time, is_blocking)
 	_draw_fighter(enemy_x, FLOOR_Y, enemy_tint, enemy_facing, "AXE", absf(enemy_x - player_x) > 125.0, enemy_attack_animation_time, 0.24, false, false, 1, enemy_hit_flash, "Axeman")
 	if enemy_attack_windup > 0.0:
 		var tell_progress := 1.0 - clampf(enemy_attack_windup / (0.48 if enemy_attack_heavy else 0.28), 0.0, 1.0)
@@ -414,7 +415,7 @@ func _draw_arena_background() -> void:
 		draw_line(Vector2(float(x), FLOOR_Y + 8), Vector2(640.0 + (float(x) - 640.0) * 1.35, 720.0), Color(0.55, 0.68, 0.82, 0.10), 1.0)
 	draw_line(Vector2(0, 710), Vector2(1280, 710), Color("#40536a"), 2.0)
 
-func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon: String, walking: bool, attack_time: float, attack_duration: float, dashing: bool, airborne: bool, combo_style: int, hit_time: float, fighter_name: String, landing: float = 0.0, vertical_velocity: float = 0.0, takeoff: float = 0.0) -> void:
+func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon: String, walking: bool, attack_time: float, attack_duration: float, dashing: bool, airborne: bool, combo_style: int, hit_time: float, fighter_name: String, landing: float = 0.0, vertical_velocity: float = 0.0, takeoff: float = 0.0, blocking: bool = false) -> void:
 	# Rig prosedural: ritme langkah, pusat berat, dan pose serangan dibangun dari waktu.
 	var gait_rate := 18.0 if dashing else (11.5 if walking else 2.2)
 	var phase := animation_time * gait_rate
@@ -433,6 +434,8 @@ func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon
 		lean = float(direction) * 18.0
 	elif walking:
 		lean = float(direction) * (5.0 + absf(stride) * 2.0)
+	elif blocking:
+		lean = -float(direction) * 5.0
 	elif attack_time > 0.0:
 		var attack_progress := 1.0 - clampf(attack_time / maxf(attack_duration, 0.01), 0.0, 1.0)
 		# Sedikit mundur saat persiapan, condong ke depan saat ayunan.
@@ -493,6 +496,17 @@ func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon
 
 		front_knee += Vector2(-7.0 * direction * anticipation + 3.0 * direction * follow, 0.0)
 		front_foot += Vector2(-10.0 * direction * anticipation, -2.0 * strike)
+
+	if blocking:
+		# Pose guard: siku rapat, senjata terangkat melindungi bagian atas tubuh.
+		front_knee = hip + Vector2(17.0 * direction, 29.0)
+		front_foot = front_knee + Vector2(8.0 * direction, 18.0)
+		back_knee = hip + Vector2(-15.0 * direction, 27.0)
+		back_foot = back_knee + Vector2(-7.0 * direction, 19.0)
+		front_elbow = shoulder + Vector2(25.0 * direction, -22.0)
+		front_hand = shoulder + Vector2(37.0 * direction, -42.0)
+		back_elbow = shoulder + Vector2(-13.0 * direction, -12.0)
+		back_hand = shoulder + Vector2(17.0 * direction, -34.0)
 
 	if hit_time > 0.0:
 		# Reaksi terpukul: badan mundur, lutut menekuk, tangan terangkat.
