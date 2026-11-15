@@ -22,23 +22,26 @@ Game fighting 2D berbasis Godot 4 untuk Android.
 - Timer 90 detik dan sistem menang/kalah.
 - Kontrol sentuh dan keyboard.
 
-## Cara membuka proyek
+## Cara membuka dan mengembangkan proyek
 
-### Opsi A — Menggunakan komputer (disarankan)
+### Alur utama — menggunakan HP Android
+1. Unduh **Godot Editor untuk Android** dari [halaman resmi Godot](https://godotengine.org/download/android/) atau Google Play Store.
+2. Unduh repository ini sebagai ZIP melalui tombol **Code → Download ZIP** di GitHub.
+3. Ekstrak ZIP ke folder yang mudah ditemukan, misalnya **Download/Stickman-Duel**.
+4. Buka Godot Editor Android dan berikan izin akses file saat diminta.
+5. Pilih **Import**, lalu pilih file `project.godot` dari folder proyek.
+6. Buka proyek dan tekan tombol **Run Project** untuk menjalankan prototipe.
+
+**Catatan Android:** Godot Editor Android masih eksperimental dan tampilannya belum dioptimalkan untuk layar sentuh. Keyboard dan mouse Bluetooth sangat membantu. Pastikan perangkat memiliki dukungan OpenGL ES 3.0 atau lebih tinggi. Untuk tahap awal, kita memakai renderer Compatibility agar lebih sesuai dengan perangkat Android yang mendukungnya.
+
+### Alternatif — menggunakan komputer
 1. Unduh dan instal Godot Engine 4 dari https://godotengine.org/download/.
-2. Unduh repository ini sebagai ZIP dari tombol **Code → Download ZIP**, lalu ekstrak.
-3. Buka Godot, tekan **Import**.
-4. Pilih file `project.godot` di folder hasil ekstrak.
-5. Tekan **Import & Edit**, lalu **Run Project** (F6/F5).
+2. Unduh repository ini sebagai ZIP, lalu ekstrak.
+3. Buka Godot, tekan **Import**, dan pilih file `project.godot`.
+4. Tekan **Import & Edit**, lalu **Run Project**.
 
-### Opsi B — Menggunakan Android
-1. Buka halaman unduhan resmi Godot: https://godotengine.org/download/android/.
-2. Unduh Godot Editor untuk Android yang sesuai dengan perangkat.
-3. Unduh repository ini sebagai ZIP dari GitHub, lalu ekstrak menggunakan pengelola file.
-4. Buka Godot Editor, pilih **Import**, lalu arahkan ke file `project.godot`.
-5. Jalankan proyek dari editor.
-
-Catatan: mengedit dan menjalankan proyek di Android dapat terasa kurang nyaman pada layar kecil. Komputer lebih disarankan untuk proses pengembangan dan ekspor APK.
+### Catatan ekspor APK
+Godot Android Editor versi terbaru mendukung ekspor proyek Android. Namun, proses ekspor dan pemasangan APK akan kita siapkan setelah prototipe berhasil dijalankan dan diuji. Jadi, saat ini belum tersedia APK siap instal.
 
 ## Kontrol
 - KIRI / KANAN: bergerak (tahan tombol).
