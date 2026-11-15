@@ -488,9 +488,28 @@ func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon
 	var back_elbow := shoulder + Vector2(-18.0 * direction + stride * 9.0 - idle_sway * 1.5 * idle_strength, 15.0)
 	var back_hand := back_elbow + Vector2(-13.0 * direction + stride * 7.0, 14.0 + idle_breath * 2.0 * idle_strength)
 
+	# Stance netral berbeda untuk tiap jenis senjata.
+	if attack_time <= 0.0 and not blocking and not airborne and not dashing and knockdown <= 0.0:
+		if weapon == "SPEAR":
+			front_elbow = shoulder + Vector2(21.0 * direction, 3.0)
+			front_hand = shoulder + Vector2(38.0 * direction, -4.0)
+			back_elbow = shoulder + Vector2(-13.0 * direction, 13.0)
+			back_hand = shoulder + Vector2(5.0 * direction, 19.0)
+		elif weapon == "AXE":
+			front_elbow = shoulder + Vector2(19.0 * direction, -12.0)
+			front_hand = shoulder + Vector2(34.0 * direction, -25.0)
+			back_elbow = shoulder + Vector2(-17.0 * direction, 14.0)
+			back_hand = shoulder + Vector2(-2.0 * direction, 3.0)
+		else:
+			front_elbow = shoulder + Vector2(19.0 * direction, 5.0)
+			front_hand = shoulder + Vector2(34.0 * direction, -8.0)
+			back_elbow = shoulder + Vector2(-17.0 * direction, 14.0)
+			back_hand = shoulder + Vector2(-2.0 * direction, 5.0)
+
 	if attack_time > 0.0:
 		var progress := 1.0 - clampf(attack_time / maxf(attack_duration, 0.01), 0.0, 1.0)
-		# 0-25% anticipation, 25-68% strike, 68-100% follow-through.
+		# 0-25% anticipation
+, 25-68% strike, 68-100% follow-through.
 		var anticipation := 1.0 - clampf(progress / 0.25, 0.0, 1.0)
 		var strike_progress := clampf((progress - 0.25) / 0.43, 0.0, 1.0)
 		var strike := sin(strike_progress * PI * 0.5)
@@ -503,12 +522,16 @@ func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon
 
 		# Siluet ayunan disesuaikan dengan karakter senjata.
 		if weapon == "SPEAR":
+			# Tusukan: siku tetap rapat, tangan memanjang tajam ke depan.
+			var spear_reach := 48.0 if combo_style == 3 else 30.0
 			front_elbow = shoulder + Vector2((25.0 + 13.0 * strike - 5.0 * follow) * direction, -3.0)
-			front_hand = shoulder + Vector2((48.0 + (48.0 if combo_style == 3 else 30.0) * strike - 10.0 * follow) * direction, -5.0 - 5.0 * strike)
+			front_hand = shoulder + Vector2((48.0 + spear_reach * strike - 10.0 * follow) * direction, -5.0 - 5.0 * strike)
 		elif weapon == "AXE":
+			# Kapak mengangkat tinggi saat persiapan lalu turun dengan bobot besar.
 			var axe_swing := 1.0 if combo_style == 3 else 0.72
 			front_elbow = shoulder + Vector2((17.0 + 8.0 * strike) * direction, -18.0 * axe_swing + 15.0 * follow)
 			front_hand = shoulder + Vector2((35.0 + 24.0 * strike - 10.0 * follow) * direction, -31.0 * axe_swing + 28.0 * strike + 12.0 * follow)
+			back_hand += Vector2(-5.0 * direction * anticipation, -8.0 * anticipation)
 		elif combo_style == 2:
 			front_elbow += Vector2(5.0 * direction, 10.0)
 			front_hand += Vector2(10.0 * direction, 22.0)
