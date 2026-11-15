@@ -905,8 +905,13 @@ func _build_ui() -> void:
 	for i in range(card_data.size()):
 		var data: Dictionary = card_data[i]
 		var card := Button.new()
-		card.text = "%s\n\n%s" % [data["title"], data["detail"]]
-		card.add_theme_font_size_override("font_size", 17)
+		card.text = "%s\n%s" % [data["title"], data["detail"]]
+		card.icon = load("res://assets/%s_portrait.svg" % str(data["name"]).to_lower())
+		card.icon_max_width = 64
+		card.expand_icon = true
+		card.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		card.alignment = HORIZONTAL_ALIGNMENT_CENTER
+		card.add_theme_font_size_override("font_size", 15)
 		card.pressed.connect(_select_character.bind(str(data["name"])))
 		menu_ui.add_child(card)
 		var left := 0.06 + float(i) * 0.205
