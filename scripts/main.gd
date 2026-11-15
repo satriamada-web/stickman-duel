@@ -49,6 +49,10 @@ var move_direction := 0
 var is_blocking := false
 var stamina := MAX_STAMINA
 var block_broken_time := 0.0
+var block_hold_time := 0.0
+var perfect_parry_flash := 0.0
+var counter_window := 0.0
+var enemy_facing := -1
 var match_over := false
 var game_started := false
 
@@ -159,7 +163,10 @@ func _process(delta: float) -> void:
 	enemy_stun_time = maxf(0.0, enemy_stun_time - delta)
 	impact_effect_time = maxf(0.0, impact_effect_time - delta)
 	block_broken_time = maxf(0.0, block_broken_time - delta)
+	perfect_parry_flash = maxf(0.0, perfect_parry_flash - delta)
+	counter_window = maxf(0.0, counter_window - delta)
 	if is_blocking:
+		block_hold_time += delta
 		stamina = maxf(0.0, stamina - BLOCK_DRAIN_RATE * delta)
 		if stamina <= 0.0:
 			is_blocking = false
@@ -208,10 +215,11 @@ func _process(delta: float) -> void:
 		enemy_knockback_velocity = 0.0
 
 	var distance := absf(enemy_x - player_x)
+	enemy_facing = 1 if player_x > enemy_x else -1
 	if enemy_stun_time > 0.0:
 		pass
 	elif distance > 125.0 and absf(enemy_knockback_velocity) <= 8.0:
-		enemy_x = move_toward(enemy_x, player_x, 145.0 * delta)
+		enemy_x = move_toward(enemy_x, player_x, 165.0 * delta)
 	elif distance <= 125.0 and enemy_attack_cooldown <= 0.0 and enemy_attack_windup <= 0.0 and absf(enemy_knockback_velocity) <= 8.0:
 		enemy_attack_count += 1
 		enemy_attack_heavy = enemy_attack_count % 3 == 0
@@ -246,19 +254,38 @@ func _trigger_hit_stop(duration: float) -> void:
 		Engine.time_scale = 1.0
 
 func _resolve_enemy_attack() -> void:
-	if absf(enemy_x - player_x) > 155.0:
+	var attack_reach := 190.0 if enemy_attack_heavy else 155.0
+	if absf(enemy_x - player_x) > attack_reach:
 		status_label.text = "SERANGAN LAWAN MELESET!"
 		return
 	if dash_time > 0.0 or jump_height >= 45.0:
 		status_label.text = "BERHASIL MENGHINDAR!"
 		return
 	var base_damage := 14 if enemy_attack_heavy else 8
+	var perfect_parry := is_blocking and block_hold_time <= 0.18 and stamina > 0.0
+	if perfect_parry:
+		incoming_damage := 0
+		enemy_stun_time = 0.85
+		enemy_attack_cooldown = maxf(enemy_attack_cooldown, 1.0)
+		counter_window = 1.1
+		perfect_parry_flash = 0.32
+		_shake_screen(11.0)
+		_trigger_hit_stop(0.085)
+		_play_sfx("heavy")
+		impact_effect_time = 0.30
+		impact_effect_x = player_x
+		impact_effect_color = Color("#8df5ff")
+		impact_effect_heavy = true
+		status_label.text = "PERFECT PARRY! BALAS SEKARANG! (BONUS DAMAGE)"
+		_update_ui()
+		queue_redraw()
+		return
 	var incoming_damage := (4 if enemy_attack_heavy else 2) if is_blocking else base_damage
 	if is_blocking and stamina <= 0.0:
 		incoming_damage = base_damage
 	player_hp = maxi(0, player_hp - incoming_damage)
 	if not is_blocking:
-		player_x = clampf(player_x - float(player_facing) * (145.0 if enemy_attack_heavy else 95.0), 70.0, 1210.0)
+		player_x = clampf(player_x + (1.0 if player_x > enemy_x else -1.0) * (145.0 if enemy_attack_heavy else 95.0), 70.0, 1210.0)
 		player_stun_time = 0.34 if enemy_attack_heavy else 0.20
 	else:
 		player_stun_time = 0.10 if enemy_attack_heavy else 0.06
@@ -290,7 +317,20 @@ func _draw() -> void:
 			draw_line(Vector2(player_x - trail_offset, FLOOR_Y - 75.0), Vector2(player_x - trail_offset - 24.0 * float(player_facing), FLOOR_Y - 75.0), trail_color, 5.0 - float(trail_index) * 0.7, true)
 	draw_circle(Vector2(player_x, FLOOR_Y - 3.0), 23.0 - minf(jump_height * 0.035, 12.0), Color(0.02, 0.04, 0.08, 0.28))
 	_draw_fighter(player_x, FLOOR_Y - jump_height, player_tint, player_facing, str(player_stats["weapon"]), move_direction != 0 or dash_time > 0.0, maxf(attack_animation_time, skill_animation_time), 0.42 if skill_animation_time > attack_animation_time else attack_animation_duration, dash_time > 0.0, jump_height > 0.0, combo_step, player_hit_flash, selected_character)
-	_draw_fighter(enemy_x, FLOOR_Y, enemy_tint, -1, "AXE", absf(enemy_x - player_x) > 125.0, enemy_attack_animation_time, 0.24, false, false, 1, enemy_hit_flash, "Axeman")
+	_draw_fighter(enemy_x, FLOOR_Y, enemy_tint, enemy_facing, "AXE", absf(enemy_x - player_x) > 125.0, enemy_attack_animation_time, 0.24, false, false, 1, enemy_hit_flash, "Axeman")
+	if enemy_attack_windup > 0.0:
+		var tell_progress := 1.0 - clampf(enemy_attack_windup / (0.48 if enemy_attack_heavy else 0.28), 0.0, 1.0)
+		var tell_color := Color("#ffb45c") if enemy_attack_heavy else Color("#ff687d")
+		draw_arc(Vector2(enemy_x, FLOOR_Y - 78.0), 34.0 + tell_progress * 12.0, 0.0, TAU, 28, tell_color, 3.0)
+		draw_rect(Rect2(enemy_x - 34.0, FLOOR_Y - 155.0, 68.0 * tell_progress, 6.0), tell_color)
+		if enemy_attack_heavy:
+			draw_circle(Vector2(enemy_x, FLOOR_Y - 78.0), 43.0, Color(1.0, 0.45, 0.15, 0.08))
+	if perfect_parry_flash > 0.0:
+		var parry_alpha := perfect_parry_flash / 0.32
+		draw_arc(Vector2(player_x, FLOOR_Y - 78.0), 52.0 + (1.0 - parry_alpha) * 25.0, 0.0, TAU, 32, Color(0.50, 0.95, 1.0, parry_alpha), 5.0)
+		draw_string(ThemeDB.fallback_font, Vector2(player_x - 82.0, FLOOR_Y - 170.0), "PARRY!", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color(0.65, 0.96, 1.0, parry_alpha))
+	if counter_window > 0.0:
+		draw_string(ThemeDB.fallback_font, Vector2(player_x - 70.0, FLOOR_Y - 188.0), "COUNTER READY", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("#a8f0c6"))
 	if impact_effect_time > 0.0:
 		var impact_y := FLOOR_Y - 78.0
 		var impact_progress := 1.0 - impact_effect_time / 0.24
@@ -634,7 +674,10 @@ func _set_blocking(value: bool) -> void:
 	var was_blocking := is_blocking
 	is_blocking = value and game_started and not match_over and player_stun_time <= 0.0 and stamina > 0.0 and block_broken_time <= 0.0
 	if is_blocking and not was_blocking:
+		block_hold_time = 0.0
 		_play_sfx("block")
+	elif not is_blocking:
+		block_hold_time = 0.0
 	if block_button != null:
 		block_button.text = "BERTAHAN" if is_blocking else ("LELAH!" if block_broken_time > 0.0 else "BLOCK")
 	queue_redraw()
@@ -672,8 +715,12 @@ func _start_match() -> void:
 	enemy_attack_windup = 0.0
 	enemy_attack_heavy = false
 	enemy_attack_count = 0
+	enemy_facing = -1
 	move_direction = 0
 	is_blocking = false
+	block_hold_time = 0.0
+	perfect_parry_flash = 0.0
+	counter_window = 0.0
 	stamina = MAX_STAMINA
 	block_broken_time = 0.0
 	if block_button != null:
@@ -743,6 +790,10 @@ func _attack() -> void:
 			attack_animation_duration = 0.42
 			attack_animation_time = attack_animation_duration
 	var damage := roundi(float(base_damage) * combo_multiplier)
+	var is_counter := counter_window > 0.0
+	if is_counter:
+		damage = roundi(float(damage) * 1.5)
+		counter_window = 0.0
 	var attack_range := 190.0 if selected_character == "Spearman" else 155.0
 	var combo_names := ["", "TEBASAN 1", "TEBASAN 2", "FINISHER!"]
 
@@ -766,7 +817,7 @@ func _attack() -> void:
 		impact_effect_x = enemy_x
 		impact_effect_color = Color(CHARACTERS[selected_character]["color"])
 		impact_effect_heavy = combo_step == 3
-		status_label.text = "%s — %s! Lawan kehilangan %d HP." % [selected_character.to_upper(), combo_names[combo_step], damage]
+		status_label.text = "%s — %s! %sLawan kehilangan %d HP." % [selected_character.to_upper(), combo_names[combo_step], "COUNTER! " if is_counter else "", damage]
 	else:
 		status_label.text = "%s — %s meleset. Dekati lawan!" % [selected_character.to_upper(), combo_names[combo_step]]
 	_update_ui()
