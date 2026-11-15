@@ -18,6 +18,10 @@ var time_left := MATCH_LENGTH
 var attack_cooldown := 0.0
 var attack_animation_time := 0.0
 var animation_time := 0.0
+var player_hit_flash := 0.0
+var enemy_hit_flash := 0.0
+var impact_effect_time := 0.0
+var impact_effect_x := 0.0
 var enemy_attack_cooldown := 0.0
 var move_direction := 0
 var match_over := false
@@ -55,6 +59,9 @@ func _process(delta: float) -> void:
 		return
 	animation_time += delta
 	attack_animation_time = maxf(0.0, attack_animation_time - delta)
+	player_hit_flash = maxf(0.0, player_hit_flash - delta)
+	enemy_hit_flash = maxf(0.0, enemy_hit_flash - delta)
+	impact_effect_time = maxf(0.0, impact_effect_time - delta)
 	time_left = maxf(0.0, time_left - delta)
 	attack_cooldown = maxf(0.0, attack_cooldown - delta)
 	enemy_attack_cooldown = maxf(0.0, enemy_attack_cooldown - delta)
@@ -66,6 +73,9 @@ func _process(delta: float) -> void:
 		enemy_x = move_toward(enemy_x, player_x, 145.0 * delta)
 	elif enemy_attack_cooldown <= 0.0:
 		player_hp = maxi(0, player_hp - 8)
+		player_hit_flash = 0.18
+		impact_effect_time = 0.16
+		impact_effect_x = player_x
 		enemy_attack_cooldown = 1.35
 
 	if time_left <= 0.0 or player_hp <= 0 or enemy_hp <= 0:
@@ -82,8 +92,14 @@ func _draw() -> void:
 	for i in range(0, 1280, 80):
 		draw_line(Vector2(i, FLOOR_Y + 35), Vector2(i + 35, FLOOR_Y + 35), Color("#40536a"), 2.0)
 	var player_stats: Dictionary = CHARACTERS[selected_character]
-	_draw_fighter(player_x, FLOOR_Y, Color(player_stats["color"]), 1, str(player_stats["weapon"]), move_direction != 0, attack_animation_time > 0.0)
-	_draw_fighter(enemy_x, FLOOR_Y, Color("#ff687d"), -1, "AXE", absf(enemy_x - player_x) > 125.0, false)
+	var player_tint := Color("#ffffff") if player_hit_flash > 0.0 else Color(player_stats["color"])
+	var enemy_tint := Color("#ffffff") if enemy_hit_flash > 0.0 else Color("#ff687d")
+	_draw_fighter(player_x, FLOOR_Y, player_tint, 1, str(player_stats["weapon"]), move_direction != 0, attack_animation_time > 0.0)
+	_draw_fighter(enemy_x, FLOOR_Y, enemy_tint, -1, "AXE", absf(enemy_x - player_x) > 125.0, false)
+	if impact_effect_time > 0.0:
+		var impact_y := FLOOR_Y - 78.0
+		draw_line(Vector2(impact_effect_x - 13, impact_y - 13), Vector2(impact_effect_x + 13, impact_y + 13), Color("#ffe28a"), 5.0)
+		draw_line(Vector2(impact_effect_x - 13, impact_y + 13), Vector2(impact_effect_x + 13, impact_y - 13), Color("#ffe28a"), 5.0)
 
 func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon: String, walking: bool, attacking: bool) -> void:
 	# Animasi prosedural sederhana: badan naik-turun dan tangan/kaki mengayun.
@@ -230,6 +246,9 @@ func _attack() -> void:
 	var attack_range := 190.0 if selected_character == "Spearman" else 155.0
 	if absf(enemy_x - player_x) <= attack_range:
 		enemy_hp = maxi(0, enemy_hp - int(stats["damage"]))
+		enemy_hit_flash = 0.18
+		impact_effect_time = 0.16
+		impact_effect_x = enemy_x
 		status_label.text = "SERANGAN %s! Lawan kehilangan %d HP." % [selected_character.to_upper(), stats["damage"]]
 	else:
 		status_label.text = "Terlalu jauh! Dekati lawan terlebih dahulu."
