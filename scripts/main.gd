@@ -39,6 +39,8 @@ var player_stun_time := 0.0
 var enemy_stun_time := 0.0
 var impact_effect_time := 0.0
 var impact_effect_x := 0.0
+var impact_effect_color := Color("#ffe08a")
+var impact_effect_heavy := false
 var enemy_attack_cooldown := 0.0
 var enemy_attack_windup := 0.0
 var enemy_attack_heavy := false
@@ -266,6 +268,8 @@ func _resolve_enemy_attack() -> void:
 	_play_sfx("block" if is_blocking else ("heavy" if enemy_attack_heavy else "impact"))
 	impact_effect_time = 0.24
 	impact_effect_x = player_x
+	impact_effect_color = Color("#7ee8ff") if is_blocking else Color("#ff7185")
+	impact_effect_heavy = enemy_attack_heavy
 	if is_blocking:
 		status_label.text = ("SERANGAN KUAT DITAHAN! Damage %d." if enemy_attack_heavy else "BLOCK BERHASIL! Damage %d.") % incoming_damage
 	else:
@@ -294,15 +298,21 @@ func _draw() -> void:
 	if impact_effect_time > 0.0:
 		var impact_y := FLOOR_Y - 78.0
 		var impact_progress := 1.0 - impact_effect_time / 0.24
-		var burst_radius := 12.0 + impact_progress * 25.0
+		var burst_radius := 10.0 + impact_progress * (42.0 if impact_effect_heavy else 28.0)
 		var burst_alpha := clampf(impact_effect_time / 0.24, 0.0, 1.0)
-		var burst_color := Color(1.0, 0.88, 0.48, burst_alpha)
-		draw_arc(Vector2(impact_effect_x, impact_y), burst_radius, 0.0, TAU, 20, burst_color, 3.0)
-		for ray in range(8):
-			var angle := TAU * float(ray) / 8.0
-			var ray_start := Vector2(cos(angle), sin(angle)) * (burst_radius + 3.0)
-			var ray_end := Vector2(cos(angle), sin(angle)) * (burst_radius + 12.0)
-			draw_line(Vector2(impact_effect_x, impact_y) + ray_start, Vector2(impact_effect_x, impact_y) + ray_end, burst_color, 3.0)
+		var burst_color := impact_effect_color
+		burst_color.a = burst_alpha
+		draw_arc(Vector2(impact_effect_x, impact_y), burst_radius, 0.0, TAU, 24, burst_color, 4.0 if impact_effect_heavy else 2.5)
+		for ray in range(10 if impact_effect_heavy else 7):
+			var angle := TAU * float(ray) / float(10 if impact_effect_heavy else 7) + impact_progress * 0.7
+			var ray_start := Vector2(cos(angle), sin(angle)) * (burst_radius * 0.55)
+			var ray_end := Vector2(cos(angle), sin(angle)) * (burst_radius + (22.0 if impact_effect_heavy else 13.0))
+			draw_line(Vector2(impact_effect_x, impact_y) + ray_start, Vector2(impact_effect_x, impact_y) + ray_end, burst_color, 3.5 if impact_effect_heavy else 2.0, true)
+		for spark in range(5):
+			var spark_angle := TAU * float(spark) / 5.0 - impact_progress * 2.0
+			var spark_distance := burst_radius + 8.0 + impact_progress * 24.0
+			var spark_position := Vector2(impact_effect_x, impact_y) + Vector2(cos(spark_angle), sin(spark_angle)) * spark_distance
+			draw_circle(spark_position, (3.5 if impact_effect_heavy else 2.5) * burst_alpha, Color.WHITE)
 
 func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon: String, walking: bool, attack_time: float, attack_duration: float, dashing: bool, airborne: bool, combo_style: int, hit_time: float, fighter_name: String) -> void:
 	# Animasi prosedural dengan fase ancang-ancang, ayunan, dan pemulihan.
@@ -428,7 +438,17 @@ func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon
 		var progress := 1.0 - clampf(attack_time / maxf(attack_duration, 0.01), 0.0, 1.0)
 		var slash_alpha := sin(progress * PI)
 		if slash_alpha > 0.05:
-			draw_arc(center + Vector2(37.0 * direction, -79.0), 49.0 + slash_alpha * 10.0, -0.95, 0.95, 20, Color(1.0, 0.9, 0.58, slash_alpha), 4.0)
+			if weapon == "SPEAR":
+				var thrust_start := center + Vector2(42.0 * direction, -83.0)
+				var thrust_end := thrust_start + Vector2(92.0 * direction, -4.0)
+				draw_line(thrust_start, thrust_end, Color(0.65, 1.0, 0.78, slash_alpha), 7.0, true)
+				draw_line(thrust_start, thrust_end, Color(1.0, 1.0, 1.0, slash_alpha * 0.8), 2.0, true)
+			elif weapon == "AXE":
+				draw_arc(center + Vector2(30.0 * direction, -83.0), 61.0 + slash_alpha * 13.0, -1.35, 1.0, 22, Color(1.0, 0.68, 0.32, slash_alpha), 7.0)
+				draw_arc(center + Vector2(30.0 * direction, -83.0), 48.0 + slash_alpha * 10.0, -1.2, 0.8, 22, Color(1.0, 0.94, 0.72, slash_alpha * 0.8), 2.5)
+			else:
+				draw_arc(center + Vector2(37.0 * direction, -79.0), 49.0 + slash_alpha * 10.0, -0.95, 0.95, 20, Color(0.48, 0.82, 1.0, slash_alpha), 6.0)
+				draw_arc(center + Vector2(37.0 * direction, -79.0), 43.0 + slash_alpha * 8.0, -0.9, 0.9, 20, Color(1.0, 1.0, 1.0, slash_alpha * 0.75), 2.0)
 
 func _build_ui() -> void:
 	var layer := CanvasLayer.new()
@@ -693,6 +713,8 @@ func _attack() -> void:
 		_play_sfx("heavy" if combo_step == 3 else "impact")
 		impact_effect_time = 0.24
 		impact_effect_x = enemy_x
+		impact_effect_color = Color(CHARACTERS[selected_character]["color"])
+		impact_effect_heavy = combo_step == 3
 		status_label.text = "%s — %s! Lawan kehilangan %d HP." % [selected_character.to_upper(), combo_names[combo_step], damage]
 	else:
 		status_label.text = "%s — %s meleset. Dekati lawan!" % [selected_character.to_upper(), combo_names[combo_step]]
@@ -754,6 +776,8 @@ func _use_skill() -> void:
 		_play_sfx("impact")
 		impact_effect_time = 0.24
 		impact_effect_x = enemy_x
+		impact_effect_color = Color(CHARACTERS[selected_character]["color"])
+		impact_effect_heavy = true
 		status_label.text = "%s! Lawan kehilangan %d HP." % [skill_name, skill_damage]
 	else:
 		status_label.text = "%s meleset! Dekati lawan." % skill_name
