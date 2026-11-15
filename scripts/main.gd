@@ -332,8 +332,8 @@ func _draw() -> void:
 			var trail_offset := float(trail_index) * 17.0 * float(player_facing)
 			draw_line(Vector2(player_x - trail_offset, FLOOR_Y - 75.0), Vector2(player_x - trail_offset - 24.0 * float(player_facing), FLOOR_Y - 75.0), trail_color, 5.0 - float(trail_index) * 0.7, true)
 	draw_circle(Vector2(player_x, FLOOR_Y - 3.0), 23.0 - minf(jump_height * 0.035, 12.0), Color(0.02, 0.04, 0.08, 0.28))
-	_draw_fighter(player_x, FLOOR_Y - jump_height, player_tint, player_facing, str(player_stats["weapon"]), move_direction != 0 or dash_time > 0.0, maxf(attack_animation_time, skill_animation_time), 0.42 if skill_animation_time > attack_animation_time else attack_animation_duration, dash_time > 0.0, jump_height > 0.0, combo_step, player_hit_flash, selected_character, landing_time, jump_velocity, jump_takeoff_time, is_blocking, player_knockdown_time)
-	_draw_fighter(enemy_x, FLOOR_Y, enemy_tint, enemy_facing, "AXE", absf(enemy_x - player_x) > 125.0, enemy_attack_animation_time, 0.24, false, false, 1, enemy_hit_flash, "Axeman", 0.0, 0.0, 0.0, false, enemy_knockdown_time)
+	_draw_fighter(player_x, FLOOR_Y - jump_height, player_tint, player_facing, str(player_stats["weapon"]), move_direction != 0 or dash_time > 0.0, maxf(attack_animation_time, skill_animation_time), 0.42 if skill_animation_time > attack_animation_time else attack_animation_duration, dash_time > 0.0, jump_height > 0.0, combo_step, player_hit_flash, selected_character, landing_time, jump_velocity, jump_takeoff_time, is_blocking, player_knockdown_time, enemy_x)
+	_draw_fighter(enemy_x, FLOOR_Y, enemy_tint, enemy_facing, "AXE", absf(enemy_x - player_x) > 125.0, enemy_attack_animation_time, 0.24, false, false, 1, enemy_hit_flash, "Axeman", 0.0, 0.0, 0.0, false, enemy_knockdown_time, player_x)
 	if enemy_attack_windup > 0.0:
 		var tell_progress := 1.0 - clampf(enemy_attack_windup / (0.48 if enemy_attack_heavy else 0.28), 0.0, 1.0)
 		var tell_color := Color("#ffb45c") if enemy_attack_heavy else Color("#ff687d")
@@ -432,7 +432,7 @@ func _solve_knee_2d(hip_point: Vector2, foot_point: Vector2, upper_length: float
 	return hip_point + direction_to_foot * along + perpendicular * height * bend_direction
 
 
-func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon: String, walking: bool, attack_time: float, attack_duration: float, dashing: bool, airborne: bool, combo_style: int, hit_time: float, fighter_name: String, landing: float = 0.0, vertical_velocity: float = 0.0, takeoff: float = 0.0, blocking: bool = false, knockdown: float = 0.0) -> void:
+func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon: String, walking: bool, attack_time: float, attack_duration: float, dashing: bool, airborne: bool, combo_style: int, hit_time: float, fighter_name: String, landing: float = 0.0, vertical_velocity: float = 0.0, takeoff: float = 0.0, blocking: bool = false, knockdown: float = 0.0, target_x: float = 0.0) -> void:
 	# Rig prosedural: ritme langkah, pusat berat, dan pose serangan dibangun dari waktu.
 	var gait_rate := 18.0 if dashing else (11.5 if walking else 2.2)
 	var phase := animation_time * gait_rate
@@ -513,6 +513,15 @@ func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon
 
 		front_knee += Vector2(-7.0 * direction * anticipation + 3.0 * direction * follow, 0.0)
 		front_foot += Vector2(-10.0 * direction * anticipation, -2.0 * strike)
+
+	# Procedural aiming: tangan depan mengikuti jarak target.
+	var target_distance := absf(target_x - x)
+	var aim_weight := (1.0 - clampf((target_distance - 95.0) / 300.0, 0.0, 1.0)) if target_x > 0.0 else 0.0
+	if aim_weight > 0.0 and not airborne and not dashing and not blocking and attack_time <= 0.0 and hit_time <= 0.0 and knockdown <= 0.0:
+		var aim_reach := 9.0 + aim_weight * 13.0
+		front_elbow = front_elbow.lerp(shoulder + Vector2(23.0 * direction, 5.0), aim_weight * 0.55)
+		front_hand = front_hand.lerp(shoulder + Vector2((37.0 + aim_reach) * direction, -8.0), aim_weight * 0.7)
+		back_hand = back_hand.lerp(back_elbow + Vector2(-8.0 * direction, 5.0), aim_weight * 0.25)
 
 	if blocking:
 		# Pose guard: siku rapat, senjata terangkat melindungi bagian atas tubuh.
@@ -618,7 +627,8 @@ func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon
 
 	# Senjata mengikuti tangan sepanjang animasi.
 	var idle_weapon_sway := idle_sway * idle_strength
-	var weapon_tip := front_hand + Vector2(48.0 * direction + idle_weapon_sway * 2.0, -12.0 + idle_breath * 2.0 * idle_strength)
+	var aim_weapon_lift := aim_weight * 5.0 if not blocking and attack_time <= 0.0 and knockdown <= 0.0 else 0.0
+	var weapon_tip := front_hand + Vector2(48.0 * direction + idle_weapon_sway * 2.0, -12.0 - aim_weapon_lift + idle_breath * 2.0 * idle_strength)
 	if weapon == "SPEAR":
 		weapon_tip = front_hand + Vector2(78.0 * direction + idle_weapon_sway * 4.0, -5.0 + idle_breath * 3.0 * idle_strength)
 		draw_line(front_hand, weapon_tip, Color("#f5d78e"), 5.0, true)
