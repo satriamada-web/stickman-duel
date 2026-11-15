@@ -766,8 +766,9 @@ func _add_button(parent: Control, value: String, pos: Vector2, button_size: Vect
 	_style_game_button(button, Color("#344e70"), 18)
 	return button
 func _attack() -> void:
-	if not game_started or match_over or attack_cooldown > 0.0 or player_stun_time > 0.0:
+	if not game_started or match_over or attack_cooldown > 0.0 or player_stun_time > 0.0 or is_blocking:
 		return
+	player_facing = 1 if enemy_x >= player_x else -1
 
 	# Tiga input berurutan dalam jendela waktu membentuk combo.
 	if combo_window > 0.0:
@@ -846,8 +847,9 @@ func _use_dash() -> void:
 	queue_redraw()
 
 func _use_skill() -> void:
-	if not game_started or match_over or skill_cooldown > 0.0 or player_stun_time > 0.0:
+	if not game_started or match_over or skill_cooldown > 0.0 or player_stun_time > 0.0 or is_blocking:
 		return
+	player_facing = 1 if enemy_x >= player_x else -1
 	var skill_name := ""
 	var skill_damage := 0
 	var skill_range := 0.0
@@ -864,6 +866,10 @@ func _use_skill() -> void:
 			skill_name = "SPEAR THRUST"
 			skill_damage = 22
 			skill_range = 260.0
+	var skill_counter := counter_window > 0.0
+	if skill_counter:
+		skill_damage = roundi(float(skill_damage) * 1.5)
+		counter_window = 0.0
 	skill_cooldown = 6.0
 	skill_animation_time = 0.42
 	_play_sfx("skill")
@@ -881,7 +887,7 @@ func _use_skill() -> void:
 		impact_effect_x = enemy_x
 		impact_effect_color = Color(CHARACTERS[selected_character]["color"])
 		impact_effect_heavy = true
-		status_label.text = "%s! Lawan kehilangan %d HP." % [skill_name, skill_damage]
+		status_label.text = "%s! %sLawan kehilangan %d HP." % [skill_name, "COUNTER! " if skill_counter else "", skill_damage]
 	else:
 		status_label.text = "%s meleset! Dekati lawan." % skill_name
 	_update_ui()
