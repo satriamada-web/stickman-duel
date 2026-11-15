@@ -66,10 +66,62 @@ var player_hp_bar: ProgressBar
 var enemy_hp_bar: ProgressBar
 var stamina_bar: ProgressBar
 var stamina_label: Label
+var sfx_players: Array[AudioStreamPlayer] = []
+var sfx_library: Dictionary = {}
+var sfx_next_player := 0
 
 func _ready() -> void:
+	_setup_audio()
 	_build_ui()
 	queue_redraw()
+
+func _setup_audio() -> void:
+	# Semua efek suara dibuat secara prosedural agar tidak membutuhkan file audio tambahan.
+	for i in range(8):
+		var player := AudioStreamPlayer.new()
+		player.volume_db = -7.0
+		add_child(player)
+		sfx_players.append(player)
+	sfx_library["sword"] = _make_sfx(620.0, 0.16, 0.24, 1.1)
+	sfx_library["axe"] = _make_sfx(155.0, 0.25, 0.48, 0.55)
+	sfx_library["spear"] = _make_sfx(430.0, 0.14, 0.12, 1.5)
+	sfx_library["impact"] = _make_sfx(115.0, 0.13, 0.62, 0.8)
+	sfx_library["heavy"] = _make_sfx(72.0, 0.24, 0.78, 0.9)
+	sfx_library["jump"] = _make_sfx(310.0, 0.17, 0.10, 0.8)
+	sfx_library["dash"] = _make_sfx(920.0, 0.14, 0.32, 0.45)
+	sfx_library["block"] = _make_sfx(245.0, 0.11, 0.42, 0.7)
+	sfx_library["skill"] = _make_sfx(510.0, 0.23, 0.28, 1.4)
+
+func _make_sfx(start_frequency: float, duration: float, noise_mix: float, pitch_sweep: float) -> AudioStreamWAV:
+	var sample_rate := 22050
+	var sample_count := int(sample_rate * duration)
+	var samples := PackedByteArray()
+	samples.resize(sample_count * 2)
+	var phase := 0.0
+	for i in range(sample_count):
+		var t := float(i) / float(sample_count)
+		var envelope := pow(1.0 - t, 2.2)
+		var frequency := start_frequency * (1.0 + pitch_sweep * t)
+		phase += frequency / float(sample_rate)
+		var tone := sin(TAU * phase)
+		var noise := randf_range(-1.0, 1.0)
+		var value := (tone * (1.0 - noise_mix * 0.55) + noise * noise_mix * 0.55) * envelope
+		samples.encode_s16(i * 2, int(clampf(value, -1.0, 1.0) * 26000.0))
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = sample_rate
+	stream.stereo = false
+	stream.data = samples
+	return stream
+
+func _play_sfx(sound_name: String) -> void:
+	if not sfx_library.has(sound_name) or sfx_players.is_empty():
+		return
+	var player: AudioStreamPlayer = sfx_players[sfx_next_player]
+	sfx_next_player = (sfx_next_player + 1) % sfx_players.size()
+	player.stop()
+	player.stream = sfx_library[sound_name]
+	player.play()
 
 func _input(event: InputEvent) -> void:
 	if not game_started or match_over:
@@ -187,6 +239,7 @@ func _resolve_enemy_attack() -> void:
 	else:
 		player_stun_time = 0.10 if enemy_attack_heavy else 0.06
 	player_hit_flash = 0.28
+	_play_sfx("block" if is_blocking else ("heavy" if enemy_attack_heavy else "impact"))
 	impact_effect_time = 0.24
 	impact_effect_x = player_x
 	if is_blocking:
@@ -483,7 +536,10 @@ func _style_game_button(button: Button, base_color: Color, font_size: int) -> vo
 
 
 func _set_blocking(value: bool) -> void:
+	var was_blocking := is_blocking
 	is_blocking = value and game_started and not match_over and player_stun_time <= 0.0 and stamina > 0.0 and block_broken_time <= 0.0
+	if is_blocking and not was_blocking:
+		_play_sfx("block")
 	if block_button != null:
 		block_button.text = "BERTAHAN" if is_blocking else ("LELAH!" if block_broken_time > 0.0 else "BLOCK")
 	queue_redraw()
@@ -607,6 +663,7 @@ func _attack() -> void:
 		enemy_attack_windup = 0.0
 		enemy_attack_animation_time = 0.0
 		enemy_hit_flash = 0.18
+		_play_sfx("heavy" if combo_step == 3 else ("sword" if selected_character == "Swordman" else ("axe" if selected_character == "Axeman" else "spear")))
 		impact_effect_time = 0.24
 		impact_effect_x = enemy_x
 		status_label.text = "%s — %s! Lawan kehilangan %d HP." % [selected_character.to_upper(), combo_names[combo_step], damage]
@@ -621,6 +678,7 @@ func _jump() -> void:
 	if not game_started or match_over or jump_height > 0.0 or player_stun_time > 0.0:
 		return
 	jump_velocity = 620.0
+	_play_sfx("jump")
 	status_label.text = "LOMPAT!"
 	queue_redraw()
 
@@ -631,6 +689,7 @@ func _use_dash() -> void:
 		player_facing = move_direction
 	dash_time = 0.18
 	dash_cooldown = 2.5
+	_play_sfx("dash")
 	status_label.text = "DASH!"
 	queue_redraw()
 
@@ -655,6 +714,7 @@ func _use_skill() -> void:
 			skill_range = 260.0
 	skill_cooldown = 6.0
 	skill_animation_time = 0.42
+	_play_sfx("skill")
 	if absf(enemy_x - player_x) <= skill_range:
 		enemy_hp = maxi(0, enemy_hp - skill_damage)
 		enemy_stun_time = 0.30
