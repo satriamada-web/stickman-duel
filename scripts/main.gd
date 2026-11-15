@@ -24,6 +24,9 @@ var jump_height := 0.0
 var jump_velocity := 0.0
 var player_facing := 1
 var attack_animation_time := 0.0
+var attack_animation_duration := 0.32
+var combo_step := 0
+var combo_window := 0.0
 var enemy_attack_animation_time := 0.0
 var animation_time := 0.0
 var player_hit_flash := 0.0
@@ -80,6 +83,9 @@ func _process(delta: float) -> void:
 	impact_effect_time = maxf(0.0, impact_effect_time - delta)
 	time_left = maxf(0.0, time_left - delta)
 	attack_cooldown = maxf(0.0, attack_cooldown - delta)
+	combo_window = maxf(0.0, combo_window - delta)
+	if combo_window <= 0.0:
+		combo_step = 0
 	skill_cooldown = maxf(0.0, skill_cooldown - delta)
 	skill_animation_time = maxf(0.0, skill_animation_time - delta)
 	dash_cooldown = maxf(0.0, dash_cooldown - delta)
@@ -138,7 +144,7 @@ func _draw() -> void:
 			var trail_offset := float(trail_index) * 17.0 * float(player_facing)
 			draw_line(Vector2(player_x - trail_offset, FLOOR_Y - 75.0), Vector2(player_x - trail_offset - 24.0 * float(player_facing), FLOOR_Y - 75.0), trail_color, 5.0 - float(trail_index) * 0.7, true)
 	draw_circle(Vector2(player_x, FLOOR_Y - 3.0), 23.0 - minf(jump_height * 0.035, 12.0), Color(0.02, 0.04, 0.08, 0.28))
-	_draw_fighter(player_x, FLOOR_Y - jump_height, player_tint, player_facing, str(player_stats["weapon"]), move_direction != 0 or dash_time > 0.0, maxf(attack_animation_time, skill_animation_time), 0.42 if skill_animation_time > attack_animation_time else 0.22, dash_time > 0.0, jump_height > 0.0)
+	_draw_fighter(player_x, FLOOR_Y - jump_height, player_tint, player_facing, str(player_stats["weapon"]), move_direction != 0 or dash_time > 0.0, maxf(attack_animation_time, skill_animation_time), 0.42 if skill_animation_time > attack_animation_time else attack_animation_duration, dash_time > 0.0, jump_height > 0.0)
 	_draw_fighter(enemy_x, FLOOR_Y, enemy_tint, -1, "AXE", absf(enemy_x - player_x) > 125.0, enemy_attack_animation_time, 0.24, false, false)
 	if impact_effect_time > 0.0:
 		var impact_y := FLOOR_Y - 78.0
@@ -306,6 +312,9 @@ func _start_match() -> void:
 	enemy_x = 960.0
 	time_left = MATCH_LENGTH
 	attack_cooldown = 0.0
+	combo_step = 0
+	combo_window = 0.0
+	attack_animation_duration = 0.32
 	skill_cooldown = 0.0
 	skill_animation_time = 0.0
 	dash_cooldown = 0.0
@@ -363,18 +372,41 @@ func _add_button(parent: Control, value: String, pos: Vector2, button_size: Vect
 func _attack() -> void:
 	if not game_started or match_over or attack_cooldown > 0.0:
 		return
-	attack_cooldown = 0.65
-	attack_animation_time = 0.22
+
+	# Tiga input berurutan dalam jendela waktu membentuk combo.
+	if combo_window > 0.0:
+		combo_step = (combo_step % 3) + 1
+	else:
+		combo_step = 1
+	combo_window = 0.85
+	attack_cooldown = 0.28
+	attack_animation_duration = 0.32
+	attack_animation_time = attack_animation_duration
+
 	var stats: Dictionary = CHARACTERS[selected_character]
+	var base_damage := int(stats["damage"])
+	var combo_multiplier := 1.0
+	match combo_step:
+		2:
+			combo_multiplier = 1.2
+		3:
+			combo_multiplier = 1.55
+			attack_animation_duration = 0.42
+			attack_animation_time = attack_animation_duration
+	var damage := roundi(float(base_damage) * combo_multiplier)
 	var attack_range := 190.0 if selected_character == "Spearman" else 155.0
+	var combo_names := ["", "TEBASAN 1", "TEBASAN 2", "FINISHER!"]
+
 	if absf(enemy_x - player_x) <= attack_range:
-		enemy_hp = maxi(0, enemy_hp - int(stats["damage"]))
+		enemy_hp = maxi(0, enemy_hp - damage)
 		enemy_hit_flash = 0.18
 		impact_effect_time = 0.24
 		impact_effect_x = enemy_x
-		status_label.text = "SERANGAN %s! Lawan kehilangan %d HP." % [selected_character.to_upper(), stats["damage"]]
+		status_label.text = "%s — %s! Lawan kehilangan %d HP." % [selected_character.to_upper(), combo_names[combo_step], damage]
 	else:
-		status_label.text = "Terlalu jauh! Dekati lawan terlebih dahulu."
+		status_label.text = "%s — %s meleset. Dekati lawan!" % [selected_character.to_upper(), combo_names[combo_step]]
+	_update_ui()
+	queue_redraw()
 
 
 
