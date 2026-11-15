@@ -16,6 +16,8 @@ var enemy_hp := 100
 var player_max_hp := 100
 var time_left := MATCH_LENGTH
 var attack_cooldown := 0.0
+var skill_cooldown := 0.0
+var skill_animation_time := 0.0
 var attack_animation_time := 0.0
 var enemy_attack_animation_time := 0.0
 var animation_time := 0.0
@@ -36,6 +38,7 @@ var enemy_hp_label: Label
 var timer_label: Label
 var selection_label: Label
 var result_button: Button
+var skill_button: Button
 
 func _ready() -> void:
 	_build_ui()
@@ -66,6 +69,8 @@ func _process(delta: float) -> void:
 	impact_effect_time = maxf(0.0, impact_effect_time - delta)
 	time_left = maxf(0.0, time_left - delta)
 	attack_cooldown = maxf(0.0, attack_cooldown - delta)
+	skill_cooldown = maxf(0.0, skill_cooldown - delta)
+	skill_animation_time = maxf(0.0, skill_animation_time - delta)
 	enemy_attack_cooldown = maxf(0.0, enemy_attack_cooldown - delta)
 	var stats: Dictionary = CHARACTERS[selected_character]
 	player_x = clampf(player_x + move_direction * float(stats["speed"]) * delta, 70.0, 1210.0)
@@ -97,7 +102,7 @@ func _draw() -> void:
 	var player_stats: Dictionary = CHARACTERS[selected_character]
 	var player_tint := Color("#ffffff") if player_hit_flash > 0.0 else Color(player_stats["color"])
 	var enemy_tint := Color("#ffffff") if enemy_hit_flash > 0.0 else Color("#ff687d")
-	_draw_fighter(player_x, FLOOR_Y, player_tint, 1, str(player_stats["weapon"]), move_direction != 0, attack_animation_time > 0.0)
+	_draw_fighter(player_x, FLOOR_Y, player_tint, 1, str(player_stats["weapon"]), move_direction != 0, attack_animation_time > 0.0 or skill_animation_time > 0.0)
 	_draw_fighter(enemy_x, FLOOR_Y, enemy_tint, -1, "AXE", absf(enemy_x - player_x) > 125.0, enemy_attack_animation_time > 0.0)
 	if impact_effect_time > 0.0:
 		var impact_y := FLOOR_Y - 78.0
@@ -205,6 +210,7 @@ func _build_ui() -> void:
 	_add_move_button(game_ui, "KIRI", Vector2(35, 590), Vector2(115, 80), -1)
 	_add_move_button(game_ui, "KANAN", Vector2(165, 590), Vector2(115, 80), 1)
 	_add_button(game_ui, "BERHENTI", Vector2(295, 590), Vector2(115, 80), func(): move_direction = 0)
+	skill_button = _add_button(game_ui, "SKILL", Vector2(900, 590), Vector2(150, 85), _use_skill)
 	_add_button(game_ui, "SERANG", Vector2(1080, 575), Vector2(160, 100), _attack)
 	result_button = _add_button(game_ui, "KEMBALI KE MENU", Vector2(510, 470), Vector2(260, 70), _return_to_menu)
 	result_button.visible = false
@@ -224,6 +230,8 @@ func _start_match() -> void:
 	enemy_x = 960.0
 	time_left = MATCH_LENGTH
 	attack_cooldown = 0.0
+	skill_cooldown = 0.0
+	skill_animation_time = 0.0
 	enemy_attack_cooldown = 0.0
 	move_direction = 0
 	match_over = false
@@ -287,10 +295,45 @@ func _attack() -> void:
 	else:
 		status_label.text = "Terlalu jauh! Dekati lawan terlebih dahulu."
 
+
+func _use_skill() -> void:
+	if not game_started or match_over or skill_cooldown > 0.0:
+		return
+	var skill_name := ""
+	var skill_damage := 0
+	var skill_range := 0.0
+	match selected_character:
+		"Swordman":
+			skill_name = "QUICK SLASH"
+			skill_damage = 25
+			skill_range = 190.0
+		"Axeman":
+			skill_name = "HEAVY STRIKE"
+			skill_damage = 38
+			skill_range = 165.0
+		"Spearman":
+			skill_name = "SPEAR THRUST"
+			skill_damage = 22
+			skill_range = 260.0
+	skill_cooldown = 6.0
+	skill_animation_time = 0.42
+	if absf(enemy_x - player_x) <= skill_range:
+		enemy_hp = maxi(0, enemy_hp - skill_damage)
+		enemy_hit_flash = 0.28
+		impact_effect_time = 0.24
+		impact_effect_x = enemy_x
+		status_label.text = "%s! Lawan kehilangan %d HP." % [skill_name, skill_damage]
+	else:
+		status_label.text = "%s meleset! Dekati lawan." % skill_name
+	_update_ui()
+	queue_redraw()
+
 func _update_ui() -> void:
 	player_hp_label.text = "%s | HP: %d/%d" % [selected_character.to_upper(), player_hp, player_max_hp]
 	enemy_hp_label.text = "OPPONENT | HP: %d" % enemy_hp
 	timer_label.text = str(ceili(time_left))
+	if skill_button != null:
+		skill_button.text = "SKILL" if skill_cooldown <= 0.0 else "SKILL\n%d dtk" % ceili(skill_cooldown)
 
 func _finish_match() -> void:
 	match_over = true
