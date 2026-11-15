@@ -847,6 +847,15 @@ func _build_ui() -> void:
 	menu_ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.add_child(menu_ui)
 
+	# Full-screen illustrated anime key art, kept behind interactive menu controls.
+	var menu_art := TextureRect.new()
+	menu_art.texture = load("res://assets/main_menu_anime.svg")
+	menu_art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	menu_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	menu_art.stretch_mode = TextureRect.STRETCH_SCALE
+	menu_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	menu_ui.add_child(menu_art)
+
 	# Header dan identitas visual menu utama.
 	var eyebrow := _make_label(menu_ui, "THE ULTIMATE STICK FIGHTING ARENA", Vector2(76, 54), 15, Color("#72d9ff"))
 	eyebrow.add_theme_color_override("font_shadow_color", Color("#1674b9"))
