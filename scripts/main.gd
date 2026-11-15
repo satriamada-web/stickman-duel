@@ -40,6 +40,9 @@ var enemy_stun_time := 0.0
 var impact_effect_time := 0.0
 var impact_effect_x := 0.0
 var enemy_attack_cooldown := 0.0
+var enemy_attack_windup := 0.0
+var enemy_attack_heavy := false
+var enemy_attack_count := 0
 var move_direction := 0
 var is_blocking := false
 var stamina := MAX_STAMINA
@@ -125,6 +128,10 @@ func _process(delta: float) -> void:
 			jump_height = 0.0
 			jump_velocity = 0.0
 	enemy_attack_cooldown = maxf(0.0, enemy_attack_cooldown - delta)
+	if enemy_attack_windup > 0.0:
+		enemy_attack_windup = maxf(0.0, enemy_attack_windup - delta)
+		if enemy_attack_windup <= 0.0:
+			_resolve_enemy_attack()
 	var stats: Dictionary = CHARACTERS[selected_character]
 	if move_direction != 0 and player_stun_time <= 0.0:
 		player_facing = move_direction
@@ -149,29 +156,40 @@ func _process(delta: float) -> void:
 		pass
 	elif distance > 125.0 and absf(enemy_knockback_velocity) <= 8.0:
 		enemy_x = move_toward(enemy_x, player_x, 145.0 * delta)
-	elif distance <= 125.0 and enemy_attack_cooldown <= 0.0 and absf(enemy_knockback_velocity) <= 8.0:
-		enemy_attack_animation_time = 0.24
-		enemy_attack_cooldown = 1.35
-		if dash_time <= 0.0 and jump_height < 45.0:
-			var incoming_damage := 2 if is_blocking else 8
-			if is_blocking and stamina <= 0.0:
-				incoming_damage = 8
-			player_hp = maxi(0, player_hp - incoming_damage)
-			if not is_blocking:
-				player_x = clampf(player_x - float(player_facing) * 95.0, 70.0, 1210.0)
-			player_hit_flash = 0.22
-			player_stun_time = 0.06 if is_blocking else 0.20
-			impact_effect_time = 0.24
-			impact_effect_x = player_x
-			status_label.text = "BLOCK BERHASIL! Damage hanya %d." % incoming_damage if is_blocking else "KAMU TERKENA SERANGAN!"
-		else:
-			status_label.text = "BERHASIL MENGHINDAR!"
+	elif distance <= 125.0 and enemy_attack_cooldown <= 0.0 and enemy_attack_windup <= 0.0 and absf(enemy_knockback_velocity) <= 8.0:
+		enemy_attack_count += 1
+		enemy_attack_heavy = enemy_attack_count % 3 == 0
+		enemy_attack_windup = 0.48 if enemy_attack_heavy else 0.28
+		enemy_attack_animation_time = enemy_attack_windup
+		enemy_attack_cooldown = 1.65 if enemy_attack_heavy else 1.25
+		status_label.text = "AWAS! LAWAN MENYIAPKAN SERANGAN KUAT!" if enemy_attack_heavy else "Lawan bersiap menyerang..."
 
 	if time_left <= 0.0 or player_hp <= 0 or enemy_hp <= 0:
 		_finish_match()
 	_update_ui()
 	queue_redraw()
 
+func _resolve_enemy_attack() -> void:
+	if absf(enemy_x - player_x) > 155.0:
+		status_label.text = "SERANGAN LAWAN MELESET!"
+		return
+	if dash_time > 0.0 or jump_height >= 45.0:
+		status_label.text = "BERHASIL MENGHINDAR!"
+		return
+	var base_damage := 14 if enemy_attack_heavy else 8
+	var incoming_damage := (4 if enemy_attack_heavy else 2) if is_blocking else base_damage
+	if is_blocking and stamina <= 0.0:
+		incoming_damage = base_damage
+	player_hp = maxi(0, player_hp - incoming_damage)
+	if not is_blocking:
+		player_x = clampf(player_x - float(player_facing) * (145.0 if enemy_attack_heavy else 95.0), 70.0, 1210.0)
+		player_stun_time = 0.34 if enemy_attack_heavy else 0.20
+	else:
+		player_stun_time = 0.10 if enemy_attack_heavy else 0.06
+	player_hit_flash = 0.28
+	impact_effect_time = 0.24
+	impact_effect_x = player_x
+	status_label.text = ("SERANGAN KUAT DITAHAN! Damage %d." if enemy_attack_heavy else "BLOCK BERHASIL! Damage %d.") % incoming_damage if is_blocking else ("TERKENA SERANGAN KUAT! -%d HP" if enemy_attack_heavy else "KAMU TERKENA SERANGAN! -%d HP") % incoming_damage
 func _draw() -> void:
 	if not game_started:
 		return
@@ -431,6 +449,9 @@ func _start_match() -> void:
 	player_stun_time = 0.0
 	enemy_stun_time = 0.0
 	enemy_attack_cooldown = 0.0
+	enemy_attack_windup = 0.0
+	enemy_attack_heavy = false
+	enemy_attack_count = 0
 	move_direction = 0
 	is_blocking = false
 	stamina = MAX_STAMINA
