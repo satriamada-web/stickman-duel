@@ -300,7 +300,7 @@ func _resolve_enemy_attack() -> void:
 	player_hp = maxi(0, player_hp - incoming_damage)
 	if not is_blocking:
 		player_x = clampf(player_x + (1.0 if player_x > enemy_x else -1.0) * (145.0 if enemy_attack_heavy else 95.0), 70.0, 1210.0)
-		player_stun_time = 0.34 if enemy_attack_heavy else 0.20
+		player_stun_time = 1.15 if enemy_attack_heavy else 0.20
 		if enemy_attack_heavy:
 			player_knockdown_time = 1.15
 	else:
@@ -799,6 +799,8 @@ func _start_match() -> void:
 	player_facing = 1
 	player_stun_time = 0.0
 	enemy_stun_time = 0.0
+	player_knockdown_time = 0.0
+	enemy_knockdown_time = 0.0
 	enemy_attack_cooldown = 0.0
 	enemy_attack_windup = 0.0
 	enemy_attack_heavy = false
@@ -895,7 +897,7 @@ func _attack() -> void:
 		elif combo_step == 3:
 			knockback_strength = 620.0
 		enemy_knockback_velocity = knockback_direction * knockback_strength
-		enemy_stun_time = 0.12 if combo_step == 1 else (0.20 if combo_step == 2 else 0.36)
+		enemy_stun_time = 1.15 if combo_step == 3 else (0.12 if combo_step == 1 else 0.20)
 		if combo_step == 3:
 			enemy_knockdown_time = 1.15
 		enemy_attack_windup = 0.0
