@@ -18,6 +18,9 @@ var time_left := MATCH_LENGTH
 var attack_cooldown := 0.0
 var skill_cooldown := 0.0
 var skill_animation_time := 0.0
+var dash_cooldown := 0.0
+var dash_time := 0.0
+var player_facing := 1
 var attack_animation_time := 0.0
 var enemy_attack_animation_time := 0.0
 var animation_time := 0.0
@@ -39,6 +42,7 @@ var timer_label: Label
 var selection_label: Label
 var result_button: Button
 var skill_button: Button
+var dash_button: Button
 var player_hp_bar: ProgressBar
 var enemy_hp_bar: ProgressBar
 
@@ -73,9 +77,18 @@ func _process(delta: float) -> void:
 	attack_cooldown = maxf(0.0, attack_cooldown - delta)
 	skill_cooldown = maxf(0.0, skill_cooldown - delta)
 	skill_animation_time = maxf(0.0, skill_animation_time - delta)
+	dash_cooldown = maxf(0.0, dash_cooldown - delta)
+	dash_time = maxf(0.0, dash_time - delta)
 	enemy_attack_cooldown = maxf(0.0, enemy_attack_cooldown - delta)
 	var stats: Dictionary = CHARACTERS[selected_character]
-	player_x = clampf(player_x + move_direction * float(stats["speed"]) * delta, 70.0, 1210.0)
+	if move_direction != 0:
+		player_facing = move_direction
+	var current_speed := float(stats["speed"])
+	if dash_time > 0.0:
+		current_speed = 900.0
+		player_x = clampf(player_x + player_facing * current_speed * delta, 70.0, 1210.0)
+	else:
+		player_x = clampf(player_x + move_direction * current_speed * delta, 70.0, 1210.0)
 
 	var distance := absf(enemy_x - player_x)
 	if distance > 125.0:
@@ -226,6 +239,7 @@ func _build_ui() -> void:
 	_add_move_button(game_ui, "KIRI", Vector2(35, 590), Vector2(115, 80), -1)
 	_add_move_button(game_ui, "KANAN", Vector2(165, 590), Vector2(115, 80), 1)
 	_add_button(game_ui, "BERHENTI", Vector2(295, 590), Vector2(115, 80), func(): move_direction = 0)
+	dash_button = _add_button(game_ui, "DASH", Vector2(735, 590), Vector2(145, 85), _use_dash)
 	skill_button = _add_button(game_ui, "SKILL", Vector2(900, 590), Vector2(150, 85), _use_skill)
 	_add_button(game_ui, "SERANG", Vector2(1080, 575), Vector2(160, 100), _attack)
 	result_button = _add_button(game_ui, "KEMBALI KE MENU", Vector2(510, 470), Vector2(260, 70), _return_to_menu)
@@ -248,6 +262,9 @@ func _start_match() -> void:
 	attack_cooldown = 0.0
 	skill_cooldown = 0.0
 	skill_animation_time = 0.0
+	dash_cooldown = 0.0
+	dash_time = 0.0
+	player_facing = 1
 	enemy_attack_cooldown = 0.0
 	move_direction = 0
 	match_over = false
@@ -312,6 +329,17 @@ func _attack() -> void:
 		status_label.text = "Terlalu jauh! Dekati lawan terlebih dahulu."
 
 
+
+func _use_dash() -> void:
+	if not game_started or match_over or dash_cooldown > 0.0:
+		return
+	if move_direction != 0:
+		player_facing = move_direction
+	dash_time = 0.18
+	dash_cooldown = 2.5
+	status_label.text = "DASH!"
+	queue_redraw()
+
 func _use_skill() -> void:
 	if not game_started or match_over or skill_cooldown > 0.0:
 		return
@@ -353,6 +381,8 @@ func _update_ui() -> void:
 	timer_label.text = str(ceili(time_left))
 	if skill_button != null:
 		skill_button.text = "SKILL" if skill_cooldown <= 0.0 else "SKILL\n%d dtk" % ceili(skill_cooldown)
+	if dash_button != null:
+		dash_button.text = "DASH" if dash_cooldown <= 0.0 else "DASH\n%d dtk" % ceili(dash_cooldown)
 
 func _finish_match() -> void:
 	match_over = true
