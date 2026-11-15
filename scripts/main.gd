@@ -23,6 +23,15 @@ func _ready() -> void:
 	_build_ui()
 	queue_redraw()
 
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey:
+		if event.keycode == KEY_A or event.keycode == KEY_LEFT:
+			move_direction = -1 if event.pressed else 0
+		elif event.keycode == KEY_D or event.keycode == KEY_RIGHT:
+			move_direction = 1 if event.pressed else 0
+		elif event.keycode == KEY_SPACE and event.pressed:
+			_attack()
+
 func _process(delta: float) -> void:
 	if match_over:
 		return
@@ -76,10 +85,20 @@ func _build_ui() -> void:
 	enemy_hp_label = _make_label(root, "OPPONENT | HP: 100", Vector2(930, 68), 22, Color("#ff687d"))
 	timer_label = _make_label(root, "90", Vector2(610, 35), 34, Color.WHITE)
 	status_label = _make_label(root, "Kalahkan lawan latihan!", Vector2(470, 105), 20, Color.WHITE)
-	_add_button(root, "KIRI", Vector2(35, 590), Vector2(115, 80), func(): move_direction = -1)
-	_add_button(root, "KANAN", Vector2(165, 590), Vector2(115, 80), func(): move_direction = 1)
+	_add_move_button(root, "KIRI", Vector2(35, 590), Vector2(115, 80), -1)
+	_add_move_button(root, "KANAN", Vector2(165, 590), Vector2(115, 80), 1)
 	_add_button(root, "BERHENTI", Vector2(295, 590), Vector2(115, 80), func(): move_direction = 0)
 	_add_button(root, "SERANG", Vector2(1080, 575), Vector2(160, 100), _attack)
+
+func _add_move_button(parent: Control, value: String, pos: Vector2, button_size: Vector2, direction: int) -> void:
+	var button := Button.new()
+	button.text = value
+	button.position = pos
+	button.size = button_size
+	button.add_theme_font_size_override("font_size", 20)
+	button.button_down.connect(func(): move_direction = direction)
+	button.button_up.connect(func(): move_direction = 0)
+	parent.add_child(button)
 
 func _make_label(parent: Control, value: String, pos: Vector2, font_size: int, color: Color) -> Label:
 	var label := Label.new()
