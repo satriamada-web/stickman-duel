@@ -94,12 +94,15 @@ func _process(delta: float) -> void:
 	if distance > 125.0:
 		enemy_x = move_toward(enemy_x, player_x, 145.0 * delta)
 	elif enemy_attack_cooldown <= 0.0:
-		player_hp = maxi(0, player_hp - 8)
-		player_hit_flash = 0.22
 		enemy_attack_animation_time = 0.24
-		impact_effect_time = 0.24
-		impact_effect_x = player_x
 		enemy_attack_cooldown = 1.35
+		if dash_time <= 0.0:
+			player_hp = maxi(0, player_hp - 8)
+			player_hit_flash = 0.22
+			impact_effect_time = 0.24
+			impact_effect_x = player_x
+		else:
+			status_label.text = "BERHASIL MENGHINDAR!"
 
 	if time_left <= 0.0 or player_hp <= 0 or enemy_hp <= 0:
 		_finish_match()
