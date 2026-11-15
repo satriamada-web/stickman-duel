@@ -538,6 +538,17 @@ func _draw_fighter(x: float, floor_y: float, tint: Color, direction: int, weapon
 			front_hand.y -= 8.0 * push
 			back_hand.y -= 8.0 * push
 
+	if dashing and not airborne:
+		# Pose dodge: badan rendah dan miring, tangan tertarik ke belakang.
+		front_knee = hip + Vector2(25.0 * direction, 34.0)
+		front_foot = front_knee + Vector2(20.0 * direction, 12.0)
+		back_knee = hip + Vector2(-22.0 * direction, 20.0)
+		back_foot = back_knee + Vector2(-18.0 * direction, 18.0)
+		front_elbow = shoulder + Vector2(-5.0 * direction, -22.0)
+		front_hand = front_elbow + Vector2(-25.0 * direction, -12.0)
+		back_elbow = shoulder + Vector2(-25.0 * direction, 5.0)
+		back_hand = back_elbow + Vector2(-27.0 * direction, 8.0)
+
 	draw_line(hip, back_knee, tint, 7.0, true)
 	draw_line(back_knee, back_foot, tint, 7.0, true)
 	draw_line(shoulder, back_elbow, tint, 6.0, true)
