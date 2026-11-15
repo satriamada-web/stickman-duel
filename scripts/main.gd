@@ -532,14 +532,14 @@ func _attack() -> void:
 
 
 func _jump() -> void:
-	if not game_started or match_over or jump_height > 0.0:
+	if not game_started or match_over or jump_height > 0.0 or player_stun_time > 0.0:
 		return
 	jump_velocity = 620.0
 	status_label.text = "LOMPAT!"
 	queue_redraw()
 
 func _use_dash() -> void:
-	if not game_started or match_over or dash_cooldown > 0.0:
+	if not game_started or match_over or dash_cooldown > 0.0 or player_stun_time > 0.0:
 		return
 	if move_direction != 0:
 		player_facing = move_direction
