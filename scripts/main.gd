@@ -72,6 +72,7 @@ var player_hp_label: Label
 var enemy_hp_label: Label
 var timer_label: Label
 var selection_label: Label
+var character_buttons: Dictionary = {}
 var result_button: Button
 var skill_button: Button
 var dash_button: Button
@@ -329,6 +330,7 @@ func _resolve_enemy_attack() -> void:
 
 func _draw() -> void:
 	if not game_started:
+		_draw_menu_backdrop()
 		return
 	_draw_arena_background()
 	var player_stats: Dictionary = CHARACTERS[selected_character]
@@ -389,6 +391,48 @@ func _draw() -> void:
 			var spark_distance := burst_radius + 8.0 + impact_progress * 24.0
 			var spark_position := Vector2(impact_effect_x, impact_y) + Vector2(cos(spark_angle), sin(spark_angle)) * spark_distance
 			draw_circle(spark_position, (3.5 if impact_effect_heavy else 2.5) * burst_alpha, Color.WHITE)
+
+
+func _draw_menu_backdrop() -> void:
+	# Latar pemilihan petarung bergaya anime: malam, bulan, kuil, dan kelopak sakura.
+	draw_rect(Rect2(0, 0, 1280, 720), Color("#080f25"))
+	draw_rect(Rect2(0, 0, 1280, 430), Color("#111d3d"))
+	draw_circle(Vector2(1010, 155), 118.0, Color(0.30, 0.55, 1.0, 0.10))
+	draw_circle(Vector2(1010, 155), 82.0, Color("#c7d9ff"))
+	draw_circle(Vector2(1010, 155), 70.0, Color("#e7edff"))
+	# Siluet pegunungan.
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(0, 390), Vector2(145, 250), Vector2(275, 365),
+		Vector2(430, 225), Vector2(590, 380), Vector2(760, 265),
+		Vector2(930, 390), Vector2(1080, 250), Vector2(1280, 370),
+		Vector2(1280, 590), Vector2(0, 590)
+	]), Color("#17284b"))
+	# Pagoda di sisi kanan.
+	for floor_index in range(3):
+		var y := 340.0 + float(floor_index) * 62.0
+		var half_width := 105.0 - float(floor_index) * 19.0
+		draw_rect(Rect2(1110.0 - half_width * 0.55, y, half_width * 1.1, 58.0), Color("#101a32"))
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(1110.0 - half_width - 24.0, y + 5.0),
+			Vector2(1110.0, y - 27.0),
+			Vector2(1110.0 + half_width + 24.0, y + 5.0),
+			Vector2(1110.0 + half_width, y + 13.0),
+			Vector2(1110.0 - half_width, y + 13.0)
+		]), Color("#26395f"))
+	# Kelopak sakura sebagai aksen.
+	for petal_index in range(34):
+		var px := float((petal_index * 173 + 71) % 1280)
+		var py := float((petal_index * 97 + 43) % 510)
+		var petal_color := Color("#ff8fc3") if petal_index % 2 == 0 else Color("#c5a4ff")
+		petal_color.a = 0.24
+		draw_circle(Vector2(px, py), 2.0 + float(petal_index % 3), petal_color)
+	# Lantai dan garis cahaya.
+	draw_rect(Rect2(0, 590, 1280, 130), Color("#090f20"))
+	draw_line(Vector2(0, 590), Vector2(1280, 590), Color("#4b78c8"), 2.0)
+	for line_index in range(13):
+		var x := float(line_index) * 110.0
+		draw_line(Vector2(640, 590), Vector2(x, 720), Color(0.24, 0.43, 0.75, 0.18), 1.0)
+	draw_rect(Rect2(0, 0, 1280, 720), Color(0.02, 0.04, 0.10, 0.22))
 
 
 func _draw_arena_background() -> void:
@@ -745,13 +789,21 @@ func _build_ui() -> void:
 	menu_ui = Control.new()
 	menu_ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.add_child(menu_ui)
-	_make_label(menu_ui, "STICKMAN DUEL", Vector2(430, 90), 48, Color.WHITE)
-	_make_label(menu_ui, "PILIH PETARUNGMU", Vector2(505, 180), 25, Color("#c8d7e8"))
-	selection_label = _make_label(menu_ui, "Dipilih: Swordman", Vector2(520, 490), 22, Color("#55c7ff"))
-	_add_button(menu_ui, "SWORDMAN\nSeimbang | 100 HP", Vector2(170, 285), Vector2(280, 145), func(): _select_character("Swordman"))
-	_add_button(menu_ui, "AXEMAN\nDamage tinggi | 110 HP", Vector2(500, 285), Vector2(280, 145), func(): _select_character("Axeman"))
-	_add_button(menu_ui, "SPEARMAN\nJangkauan | 90 HP", Vector2(830, 285), Vector2(280, 145), func(): _select_character("Spearman"))
-	_add_button(menu_ui, "MULAI BERTARUNG", Vector2(490, 550), Vector2(300, 80), _start_match)
+	_make_label(menu_ui, "STICKMAN DUEL", Vector2(92, 62), 54, Color("#f4f7ff"))
+	_make_label(menu_ui, "ANIME FIGHTING ARENA  /  CHOOSE YOUR WARRIOR", Vector2(98, 126), 18, Color("#91b9ff"))
+	_make_label(menu_ui, "PILIH PETARUNGMU", Vector2(100, 205), 27, Color("#e7edff"))
+	_make_label(menu_ui, "Setiap petarung memiliki gaya bertarung dan keunggulan berbeda.", Vector2(100, 238), 16, Color("#a9b9d8"))
+	var sword_card := _add_button(menu_ui, "SWORDMAN\n\nFAST & BALANCED\n100 HP  |  15 ATK", Vector2(100, 300), Vector2(320, 172), func(): _select_character("Swordman"))
+	var axe_card := _add_button(menu_ui, "AXEMAN\n\nPOWER & HEAVY\n110 HP  |  22 ATK", Vector2(480, 300), Vector2(320, 172), func(): _select_character("Axeman"))
+	var spear_card := _add_button(menu_ui, "SPEARMAN\n\nAGILE & LONG RANGE\n90 HP  |  12 ATK", Vector2(860, 300), Vector2(320, 172), func(): _select_character("Spearman"))
+	character_buttons = {"Swordman": sword_card, "Axeman": axe_card, "Spearman": spear_card}
+	_style_game_button(sword_card, Color("#1765b9"), 21)
+	_style_game_button(axe_card, Color("#a94d25"), 21)
+	_style_game_button(spear_card, Color("#287b59"), 21)
+	selection_label = _make_label(menu_ui, "SELECTED: SWORDMAN", Vector2(100, 510), 20, Color("#73caff"))
+	var start_button := _add_button(menu_ui, "START BATTLE  >>", Vector2(860, 555), Vector2(320, 82), _start_match)
+	_style_game_button(start_button, Color("#d18b22"), 24)
+	_select_character(selected_character)
 
 	game_ui = Control.new()
 	game_ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -880,8 +932,14 @@ func _set_blocking(value: bool) -> void:
 func _select_character(character_name: String) -> void:
 	selected_character = character_name
 	var stats: Dictionary = CHARACTERS[selected_character]
-	selection_label.text = "Dipilih: %s | %d HP | %d damage" % [selected_character, stats["hp"], stats["damage"]]
+	selection_label.text = "SELECTED: %s  |  %d HP  |  %d ATK" % [selected_character.to_upper(), stats["hp"], stats["damage"]]
 	selection_label.add_theme_color_override("font_color", Color(stats["color"]))
+	for fighter_name in character_buttons.keys():
+		var fighter_button: Button = character_buttons[fighter_name]
+		var base_color := Color("#1765b9") if fighter_name == "Swordman" else (Color("#a94d25") if fighter_name == "Axeman" else Color("#287b59"))
+		if fighter_name == selected_character:
+			base_color = base_color.lightened(0.28)
+		_style_game_button(fighter_button, base_color, 21)
 
 func _start_match() -> void:
 	var stats: Dictionary = CHARACTERS[selected_character]
